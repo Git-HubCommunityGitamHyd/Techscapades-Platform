@@ -1,0 +1,111 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/server";
+import QRCode from "qrcode";
+import JSZip from "jszip";
+import { generateQRToken } from "@/lib/utils/helpers";
+
+export async function POST(request: NextRequest) {
+    try {
+        const { event_id } = await request.json();
+
+        if (!event_id) {
+            return NextResponse.json(
+                { success: false, message: "Event ID is required" },
+                { status: 400 }
+            );
+        }
+
+        const supabase = createAdminClient();
+
+        // Get all clues for the event
+        const { data: clues, error: cluesError } = await supabase
+            .from("clues")
+            .select("*")
+            .eq("event_id", event_id)
+            .order("step_number");
+
+        if (cluesError || !clues || clues.length === 0) {
+            return NextResponse.json(
+                { success: false, message: "No clues found for this event" },
+                { status: 404 }
+            );
+        }
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const zip = new JSZip();
+        const qrCodesToInsert = [];
+
+        for (const clue of clues) {
+            // Check if QR code already exists
+            const { data: existingQR } = await supabase
+                .from("qr_codes")
+                .select("*")
+                .eq("clue_id", clue.id)
+                .single();
+
+            let qrToken: string;
+
+            if (existingQR) {
+                qrToken = existingQR.qr_token;
+            } else {
+                qrToken = generateQRToken();
+                qrCodesToInsert.push({
+                    event_id,
+                    clue_id: clue.id,
+                    qr_token: qrToken,
+                });
+            }
+
+            // Generate QR code image
+            const scanUrl = `${appUrl}/scan?token=${qrToken}`;
+            const qrDataUrl = await QRCode.toDataURL(scanUrl, {
+                width: 400,
+                margin: 2,
+                color: {
+                    dark: "#1e1e2e",
+                    light: "#ffffff",
+                },
+            });
+
+            // Convert data URL to buffer
+            const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");
+            const imageBuffer = Buffer.from(base64Data, "base64");
+
+            // Add to zip
+            const fileName = `clue_${clue.step_number.toString().padStart(2, "0")}_${(clue.location_name || "location").replace(/[^a-zA-Z0-9]/g, "_")}.png`;
+            zip.file(fileName, imageBuffer);
+        }
+
+        // Insert new QR codes
+        if (qrCodesToInsert.length > 0) {
+            const { error: insertError } = await supabase
+                .from("qr_codes")
+                .insert(qrCodesToInsert);
+
+            if (insertError) {
+                console.error("QR insert error:", insertError);
+                return NextResponse.json(
+                    { success: false, message: "Failed to save QR codes" },
+                    { status: 500 }
+                );
+            }
+        }
+
+        // Generate zip file
+        const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+        const base64Zip = zipBuffer.toString("base64");
+
+        return NextResponse.json({
+            success: true,
+            message: `Generated ${clues.length} QR codes`,
+            zipBase64: base64Zip,
+            clueCount: clues.length,
+        });
+    } catch (error) {
+        console.error("QR generation error:", error);
+        return NextResponse.json(
+            { success: false, message: "An error occurred" },
+            { status: 500 }
+        );
+    }
+}

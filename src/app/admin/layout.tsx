@@ -1,0 +1,127 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import type { Team } from "@/lib/types";
+
+const navItems = [
+    { href: "/admin", label: "Dashboard", icon: "📊" },
+    { href: "/admin/events", label: "Events", icon: "📅" },
+    { href: "/admin/teams", label: "Teams", icon: "👥" },
+    { href: "/admin/clues", label: "Clues", icon: "🔍" },
+    { href: "/admin/qr-codes", label: "QR Codes", icon: "📱" },
+    { href: "/admin/monitor", label: "Live Monitor", icon: "📡" },
+];
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const [admin, setAdmin] = useState<Team | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    useEffect(() => {
+        const storedAdmin = localStorage.getItem("admin");
+        if (!storedAdmin) {
+            router.push("/admin-login");
+            return;
+        }
+        setAdmin(JSON.parse(storedAdmin));
+        setIsLoading(false);
+    }, [router]);
+
+    const handleLogout = () => {
+        localStorage.removeItem("admin");
+        router.push("/admin-login");
+    };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            </div>
+        );
+    }
+
+    if (!admin) return null;
+
+    return (
+        <div className="min-h-screen bg-slate-900">
+            {/* Mobile Header */}
+            <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur border-b border-slate-800 z-50 flex items-center justify-between px-4">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="text-slate-400"
+                >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </Button>
+                <h1 className="text-lg font-bold text-white">Admin</h1>
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-400">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </Button>
+            </div>
+
+            {/* Sidebar */}
+            <aside
+                className={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-800 z-40 transform transition-transform duration-200 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    }`}
+            >
+                <div className="p-6 border-b border-slate-800">
+                    <h1 className="text-xl font-bold text-white">Treasure Hunt</h1>
+                    <p className="text-sm text-slate-400 mt-1">Admin Dashboard</p>
+                </div>
+
+                <nav className="p-4 space-y-1">
+                    {navItems.map((item) => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setIsSidebarOpen(false)}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname === item.href
+                                    ? "bg-purple-500/20 text-purple-400"
+                                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                }`}
+                        >
+                            <span>{item.icon}</span>
+                            <span>{item.label}</span>
+                        </Link>
+                    ))}
+                </nav>
+
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-800">
+                    <Button
+                        variant="ghost"
+                        onClick={handleLogout}
+                        className="w-full justify-start text-slate-400 hover:text-white hover:bg-slate-800"
+                    >
+                        <svg className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Logout
+                    </Button>
+                </div>
+            </aside>
+
+            {/* Mobile Overlay */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            {/* Main Content */}
+            <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
+                <div className="p-6">{children}</div>
+            </main>
+        </div>
+    );
+}
