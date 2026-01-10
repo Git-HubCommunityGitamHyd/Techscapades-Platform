@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import type { Team } from "@/lib/types";
 
 const navItems = [
-    { href: "/admin", label: "Dashboard", icon: "📊" },
     { href: "/admin/events", label: "Events", icon: "📅" },
     { href: "/admin/teams", label: "Teams", icon: "👥" },
     { href: "/admin/clues", label: "Clues", icon: "🔍" },
@@ -86,8 +85,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             href={item.href}
                             onClick={() => setIsSidebarOpen(false)}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname === item.href
-                                    ? "bg-purple-500/20 text-purple-400"
-                                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                ? "bg-purple-500/20 text-purple-400"
+                                : "text-slate-400 hover:bg-slate-800 hover:text-white"
                                 }`}
                         >
                             <span>{item.icon}</span>
