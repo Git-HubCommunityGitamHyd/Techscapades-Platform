@@ -35,6 +35,7 @@ CREATE TABLE clues (
   step_number INTEGER NOT NULL,
   clue_text TEXT NOT NULL,
   location_name TEXT,
+  admin_notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

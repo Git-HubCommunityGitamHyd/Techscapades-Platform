@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { event_id, step_number, clue_text, location_name } = body;
+        const { event_id, step_number, clue_text, location_name, admin_notes } = body;
 
         if (!event_id || !clue_text) {
             return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 });
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
                 step_number,
                 clue_text,
                 location_name: location_name || null,
+                admin_notes: admin_notes || null,
             })
             .select()
             .single();

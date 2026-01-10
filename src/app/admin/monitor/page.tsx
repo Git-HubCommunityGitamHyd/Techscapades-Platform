@@ -13,7 +13,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
-import type { Event, Team, Scan } from "@/lib/types";
+import type { Event, Team, Scan, Clue } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils/helpers";
 
 interface TeamWithScan extends Team {
@@ -24,7 +24,9 @@ export default function MonitorPage() {
     const [events, setEvents] = useState<Event[]>([]);
     const [selectedEvent, setSelectedEvent] = useState<string>("");
     const [teams, setTeams] = useState<TeamWithScan[]>([]);
+    const [clues, setClues] = useState<Clue[]>([]);
     const [totalClues, setTotalClues] = useState(0);
+    const [showClueReference, setShowClueReference] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchTeams = useCallback(async () => {
@@ -40,12 +42,14 @@ export default function MonitorPage() {
             .eq("is_admin", false)
             .order("score", { ascending: false });
 
-        // Get total clues
-        const { count } = await supabase
+        // Get total clues with admin notes
+        const { data: cluesData, count } = await supabase
             .from("clues")
-            .select("id", { count: "exact" })
-            .eq("event_id", selectedEvent);
+            .select("*", { count: "exact" })
+            .eq("event_id", selectedEvent)
+            .order("step_number", { ascending: true });
 
+        setClues(cluesData || []);
         setTotalClues(count || 0);
 
         if (teamsData) {
@@ -238,6 +242,57 @@ export default function MonitorPage() {
                 </Card>
             </div>
 
+            {/* Clue Answer Reference */}
+            <Card className="bg-amber-900/20 border-amber-700/50">
+                <CardHeader className="cursor-pointer" onClick={() => setShowClueReference(!showClueReference)}>
+                    <CardTitle className="text-amber-400 flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                            🔑 Clue Answer Reference
+                            <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/50">
+                                {clues.filter(c => c.admin_notes).length} answers
+                            </Badge>
+                        </span>
+                        <span className="text-lg">{showClueReference ? "▼" : "▶"}</span>
+                    </CardTitle>
+                </CardHeader>
+                {showClueReference && (
+                    <CardContent className="pt-0">
+                        {clues.length === 0 ? (
+                            <p className="text-amber-300/60 text-center py-4">No clues configured for this event</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {clues.map((clue) => (
+                                    <div
+                                        key={clue.id}
+                                        className="p-3 rounded-lg bg-slate-900/50 border border-amber-700/30"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 shrink-0">
+                                                Step {clue.step_number}
+                                            </Badge>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-slate-300 text-sm">{clue.clue_text}</p>
+                                                {clue.location_name && (
+                                                    <p className="text-xs text-purple-400 mt-1">📍 {clue.location_name}</p>
+                                                )}
+                                                {clue.admin_notes ? (
+                                                    <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/30">
+                                                        <p className="text-xs text-amber-400 font-medium">Answer:</p>
+                                                        <p className="text-amber-200 font-medium">{clue.admin_notes}</p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-slate-500 mt-2 italic">No answer configured</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                )}
+            </Card>
+
             {/* Teams Table */}
             <Card className="bg-slate-800/50 border-slate-700">
                 <CardHeader>
@@ -270,12 +325,12 @@ export default function MonitorPage() {
                                             <td className="py-3">
                                                 <span
                                                     className={`font-bold ${index === 0
-                                                            ? "text-yellow-400"
-                                                            : index === 1
-                                                                ? "text-slate-300"
-                                                                : index === 2
-                                                                    ? "text-orange-400"
-                                                                    : "text-slate-500"
+                                                        ? "text-yellow-400"
+                                                        : index === 1
+                                                            ? "text-slate-300"
+                                                            : index === 2
+                                                                ? "text-orange-400"
+                                                                : "text-slate-500"
                                                         }`}
                                                 >
                                                     {index + 1}

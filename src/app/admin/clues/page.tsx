@@ -34,6 +34,7 @@ export default function CluesPage() {
     const [formData, setFormData] = useState({
         clue_text: "",
         location_name: "",
+        admin_notes: "",
     });
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -88,6 +89,7 @@ export default function CluesPage() {
                         id: editingClue.id,
                         clue_text: formData.clue_text,
                         location_name: formData.location_name || null,
+                        admin_notes: formData.admin_notes || null,
                     }),
                 });
                 const data = await response.json();
@@ -105,6 +107,7 @@ export default function CluesPage() {
                         step_number: clues.length + 1,
                         clue_text: formData.clue_text,
                         location_name: formData.location_name || null,
+                        admin_notes: formData.admin_notes || null,
                     }),
                 });
                 const data = await response.json();
@@ -116,7 +119,7 @@ export default function CluesPage() {
             }
 
             setIsDialogOpen(false);
-            setFormData({ clue_text: "", location_name: "" });
+            setFormData({ clue_text: "", location_name: "", admin_notes: "" });
             setEditingClue(null);
             fetchClues();
             setTimeout(() => setSuccess(""), 3000);
@@ -175,6 +178,7 @@ export default function CluesPage() {
         setFormData({
             clue_text: clue.clue_text,
             location_name: clue.location_name || "",
+            admin_notes: clue.admin_notes || "",
         });
         setIsDialogOpen(true);
     };
@@ -199,7 +203,7 @@ export default function CluesPage() {
                     setIsDialogOpen(open);
                     if (!open) {
                         setEditingClue(null);
-                        setFormData({ clue_text: "", location_name: "" });
+                        setFormData({ clue_text: "", location_name: "", admin_notes: "" });
                     }
                 }}>
                     <DialogTrigger asChild>
@@ -238,6 +242,16 @@ export default function CluesPage() {
                                     onChange={(e) => setFormData({ ...formData, location_name: e.target.value })}
                                     placeholder="e.g., Library, Cafeteria"
                                     className="bg-slate-800 border-slate-700 text-white"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-slate-300">Admin Notes (answer/hints - only visible to admins)</Label>
+                                <Textarea
+                                    value={formData.admin_notes}
+                                    onChange={(e) => setFormData({ ...formData, admin_notes: e.target.value })}
+                                    placeholder="Enter the answer or admin-only notes here..."
+                                    className="bg-amber-900/20 border-amber-700/50 text-amber-100 min-h-[80px] placeholder:text-amber-700/70"
                                 />
                             </div>
 
@@ -316,6 +330,12 @@ export default function CluesPage() {
                                         <p className="text-white whitespace-pre-wrap">{clue.clue_text}</p>
                                         {clue.location_name && (
                                             <p className="text-sm text-purple-400 mt-2">📍 {clue.location_name}</p>
+                                        )}
+                                        {clue.admin_notes && (
+                                            <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/30">
+                                                <p className="text-xs text-amber-400 font-medium">🔑 Admin Notes:</p>
+                                                <p className="text-sm text-amber-300">{clue.admin_notes}</p>
+                                            </div>
                                         )}
                                     </div>
 
