@@ -14,8 +14,20 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import type { Event } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils/helpers";
+
+// Generate hours 08-16
+const hours = Array.from({ length: 9 }, (_, i) => String(i + 8).padStart(2, "0"));
+// Generate minutes 00, 15, 30, 45
+const minutes = ["00", "15", "30", "45"];
 
 export default function EventsPage() {
     const [events, setEvents] = useState<Event[]>([]);
@@ -24,8 +36,12 @@ export default function EventsPage() {
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
     const [formData, setFormData] = useState({
         name: "",
-        start_time: "",
-        end_time: "",
+        start_date: "",
+        start_hour: "09",
+        start_minute: "00",
+        end_date: "",
+        end_hour: "17",
+        end_minute: "00",
     });
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -47,34 +63,42 @@ export default function EventsPage() {
         setIsLoading(false);
     };
 
-    const formatDateTimeLocal = (dateStr: string) => {
+    const parseDateTimeToForm = (dateStr: string) => {
         const date = new Date(dateStr);
-        return date.toISOString().slice(0, 16);
+        const dateOnly = date.toISOString().split("T")[0];
+        const hour = String(date.getHours()).padStart(2, "0");
+        // Round to nearest 15 min
+        const min = String(Math.round(date.getMinutes() / 15) * 15).padStart(2, "0");
+        return { date: dateOnly, hour, minute: min === "60" ? "00" : min };
+    };
+
+    const combineDateTime = (date: string, hour: string, minute: string) => {
+        return new Date(`${date}T${hour}:${minute}:00`).toISOString();
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
 
+        const startTime = combineDateTime(formData.start_date, formData.start_hour, formData.start_minute);
+        const endTime = combineDateTime(formData.end_date, formData.end_hour, formData.end_minute);
+
         // Validate that end time is after start time
-        if (formData.start_time && formData.end_time) {
-            if (new Date(formData.end_time) <= new Date(formData.start_time)) {
-                setError("End time must be after start time");
-                return;
-            }
+        if (new Date(endTime) <= new Date(startTime)) {
+            setError("End time must be after start time");
+            return;
         }
 
         try {
             if (editingEvent) {
-                // Update existing event
                 const response = await fetch("/api/admin/events", {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         id: editingEvent.id,
                         name: formData.name,
-                        start_time: new Date(formData.start_time).toISOString(),
-                        end_time: new Date(formData.end_time).toISOString(),
+                        start_time: startTime,
+                        end_time: endTime,
                     }),
                 });
 
@@ -85,11 +109,14 @@ export default function EventsPage() {
                 }
                 setSuccess("Event updated successfully!");
             } else {
-                // Create new event
                 const response = await fetch("/api/admin/events", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(formData),
+                    body: JSON.stringify({
+                        name: formData.name,
+                        start_time: startTime,
+                        end_time: endTime,
+                    }),
                 });
 
                 const data = await response.json();
@@ -101,8 +128,7 @@ export default function EventsPage() {
             }
 
             setIsDialogOpen(false);
-            setFormData({ name: "", start_time: "", end_time: "" });
-            setEditingEvent(null);
+            resetForm();
             fetchEvents();
             setTimeout(() => setSuccess(""), 3000);
         } catch (err) {
@@ -111,19 +137,37 @@ export default function EventsPage() {
         }
     };
 
+    const resetForm = () => {
+        setFormData({
+            name: "",
+            start_date: "",
+            start_hour: "09",
+            start_minute: "00",
+            end_date: "",
+            end_hour: "17",
+            end_minute: "00",
+        });
+        setEditingEvent(null);
+    };
+
     const openEditDialog = (event: Event) => {
         setEditingEvent(event);
+        const start = parseDateTimeToForm(event.start_time);
+        const end = parseDateTimeToForm(event.end_time);
         setFormData({
             name: event.name,
-            start_time: formatDateTimeLocal(event.start_time),
-            end_time: formatDateTimeLocal(event.end_time),
+            start_date: start.date,
+            start_hour: start.hour,
+            start_minute: start.minute,
+            end_date: end.date,
+            end_hour: end.hour,
+            end_minute: end.minute,
         });
         setIsDialogOpen(true);
     };
 
     const openCreateDialog = () => {
-        setEditingEvent(null);
-        setFormData({ name: "", start_time: "", end_time: "" });
+        resetForm();
         setIsDialogOpen(true);
     };
 
@@ -171,8 +215,7 @@ export default function EventsPage() {
                 <Dialog open={isDialogOpen} onOpenChange={(open) => {
                     setIsDialogOpen(open);
                     if (!open) {
-                        setEditingEvent(null);
-                        setFormData({ name: "", start_time: "", end_time: "" });
+                        resetForm();
                         setError("");
                     }
                 }}>
@@ -181,7 +224,7 @@ export default function EventsPage() {
                             + New Event
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-slate-900 border-slate-700">
+                    <DialogContent className="bg-slate-900 border-slate-700 max-w-md">
                         <DialogHeader>
                             <DialogTitle className="text-white">
                                 {editingEvent ? "Edit Event" : "Create New Event"}
@@ -205,28 +248,75 @@ export default function EventsPage() {
                                 />
                             </div>
 
+                            {/* Start Date/Time */}
                             <div className="space-y-2">
-                                <Label className="text-slate-300">Start Time</Label>
-                                <Input
-                                    type="datetime-local"
-                                    value={formData.start_time}
-                                    onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                                    max={formData.end_time || undefined}
-                                    className="bg-slate-800 border-slate-700 text-white"
-                                    required
-                                />
+                                <Label className="text-slate-300">Start Date & Time</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        type="date"
+                                        value={formData.start_date}
+                                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                                        className="bg-slate-800 border-slate-700 text-white flex-1"
+                                        required
+                                    />
+                                    <Select value={formData.start_hour} onValueChange={(v) => setFormData({ ...formData, start_hour: v })}>
+                                        <SelectTrigger className="w-20 bg-slate-800 border-slate-700 text-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 border-slate-700 max-h-48">
+                                            {hours.map((h) => (
+                                                <SelectItem key={h} value={h} className="text-white">{h}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <span className="text-white self-center">:</span>
+                                    <Select value={formData.start_minute} onValueChange={(v) => setFormData({ ...formData, start_minute: v })}>
+                                        <SelectTrigger className="w-20 bg-slate-800 border-slate-700 text-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 border-slate-700">
+                                            {minutes.map((m) => (
+                                                <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
+                            {/* End Date/Time */}
                             <div className="space-y-2">
-                                <Label className="text-slate-300">End Time</Label>
-                                <Input
-                                    type="datetime-local"
-                                    value={formData.end_time}
-                                    onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                                    min={formData.start_time || undefined}
-                                    className="bg-slate-800 border-slate-700 text-white"
-                                    required
-                                />
+                                <Label className="text-slate-300">End Date & Time</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        type="date"
+                                        value={formData.end_date}
+                                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                                        min={formData.start_date || undefined}
+                                        className="bg-slate-800 border-slate-700 text-white flex-1"
+                                        required
+                                    />
+                                    <Select value={formData.end_hour} onValueChange={(v) => setFormData({ ...formData, end_hour: v })}>
+                                        <SelectTrigger className="w-20 bg-slate-800 border-slate-700 text-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 border-slate-700 max-h-48">
+                                            {hours.map((h) => (
+                                                <SelectItem key={h} value={h} className="text-white">{h}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <span className="text-white self-center">:</span>
+                                    <Select value={formData.end_minute} onValueChange={(v) => setFormData({ ...formData, end_minute: v })}>
+                                        <SelectTrigger className="w-20 bg-slate-800 border-slate-700 text-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 border-slate-700">
+                                            {minutes.map((m) => (
+                                                <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
                             <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">
