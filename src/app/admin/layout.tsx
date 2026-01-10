@@ -8,8 +8,8 @@ import type { Team } from "@/lib/types";
 
 const navItems = [
     { href: "/admin/events", label: "Events", icon: "📅" },
-    { href: "/admin/teams", label: "Teams", icon: "👥" },
     { href: "/admin/clues", label: "Clues", icon: "🔍" },
+    { href: "/admin/teams", label: "Teams", icon: "👥" },
     { href: "/admin/qr-codes", label: "QR Codes", icon: "📱" },
     { href: "/admin/monitor", label: "Live Monitor", icon: "📡" },
 ];
