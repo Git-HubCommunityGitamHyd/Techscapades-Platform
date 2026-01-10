@@ -56,6 +56,14 @@ export default function EventsPage() {
         e.preventDefault();
         setError("");
 
+        // Validate that end time is after start time
+        if (formData.start_time && formData.end_time) {
+            if (new Date(formData.end_time) <= new Date(formData.start_time)) {
+                setError("End time must be after start time");
+                return;
+            }
+        }
+
         try {
             if (editingEvent) {
                 // Update existing event
@@ -203,6 +211,7 @@ export default function EventsPage() {
                                     type="datetime-local"
                                     value={formData.start_time}
                                     onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                                    max={formData.end_time || undefined}
                                     className="bg-slate-800 border-slate-700 text-white"
                                     required
                                 />
@@ -214,6 +223,7 @@ export default function EventsPage() {
                                     type="datetime-local"
                                     value={formData.end_time}
                                     onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                                    min={formData.start_time || undefined}
                                     className="bg-slate-800 border-slate-700 text-white"
                                     required
                                 />

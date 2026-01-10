@@ -30,11 +30,15 @@ export function shuffleArray<T>(array: T[]): T[] {
     return shuffled;
 }
 
-// Format date for display
+// Format date for display (24hr format)
 export function formatDateTime(date: string | Date): string {
-    return new Date(date).toLocaleString("en-US", {
-        dateStyle: "medium",
-        timeStyle: "short",
+    return new Date(date).toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
     });
 }
 
