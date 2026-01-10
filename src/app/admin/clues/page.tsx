@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { createClient } from "@/lib/supabase/client";
 import type { Event, Clue } from "@/lib/types";
 
 export default function CluesPage() {
@@ -39,6 +38,19 @@ export default function CluesPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
+    const fetchClues = useCallback(async () => {
+        if (!selectedEvent) return;
+        try {
+            const response = await fetch(`/api/admin/clues?event_id=${selectedEvent}`);
+            const data = await response.json();
+            if (data.success) {
+                setClues(data.data || []);
+            }
+        } catch (err) {
+            console.error("Fetch clues error:", err);
+        }
+    }, [selectedEvent]);
+
     useEffect(() => {
         fetchEvents();
     }, []);
@@ -47,109 +59,115 @@ export default function CluesPage() {
         if (selectedEvent) {
             fetchClues();
         }
-    }, [selectedEvent]);
+    }, [selectedEvent, fetchClues]);
 
     const fetchEvents = async () => {
-        const supabase = createClient();
-        const { data } = await supabase.from("events").select("*").order("created_at", { ascending: false });
-        setEvents(data || []);
-        if (data && data.length > 0) {
-            setSelectedEvent(data[0].id);
+        try {
+            const response = await fetch("/api/admin/events");
+            const data = await response.json();
+            if (data.success && data.data?.length > 0) {
+                setEvents(data.data);
+                setSelectedEvent(data.data[0].id);
+            }
+        } catch (err) {
+            console.error("Fetch events error:", err);
         }
         setIsLoading(false);
-    };
-
-    const fetchClues = async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-            .from("clues")
-            .select("*")
-            .eq("event_id", selectedEvent)
-            .order("step_number", { ascending: true });
-        setClues(data || []);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
 
-        const supabase = createClient();
-
-        if (editingClue) {
-            // Update existing clue
-            const { error: updateError } = await supabase
-                .from("clues")
-                .update({
-                    clue_text: formData.clue_text,
-                    location_name: formData.location_name || null,
-                })
-                .eq("id", editingClue.id);
-
-            if (updateError) {
-                setError("Failed to update clue");
-                return;
+        try {
+            if (editingClue) {
+                const response = await fetch("/api/admin/clues", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        id: editingClue.id,
+                        clue_text: formData.clue_text,
+                        location_name: formData.location_name || null,
+                    }),
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    setError(data.message || "Failed to update clue");
+                    return;
+                }
+                setSuccess("Clue updated successfully!");
+            } else {
+                const response = await fetch("/api/admin/clues", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        event_id: selectedEvent,
+                        step_number: clues.length + 1,
+                        clue_text: formData.clue_text,
+                        location_name: formData.location_name || null,
+                    }),
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    setError(data.message || "Failed to create clue");
+                    return;
+                }
+                setSuccess("Clue added successfully!");
             }
-            setSuccess("Clue updated successfully!");
-        } else {
-            // Create new clue
-            const nextStep = clues.length + 1;
-            const { error: insertError } = await supabase.from("clues").insert({
-                event_id: selectedEvent,
-                step_number: nextStep,
-                clue_text: formData.clue_text,
-                location_name: formData.location_name || null,
-            });
 
-            if (insertError) {
-                setError("Failed to create clue");
-                return;
-            }
-            setSuccess("Clue added successfully!");
+            setIsDialogOpen(false);
+            setFormData({ clue_text: "", location_name: "" });
+            setEditingClue(null);
+            fetchClues();
+            setTimeout(() => setSuccess(""), 3000);
+        } catch (err) {
+            console.error("Submit error:", err);
+            setError("An error occurred");
         }
-
-        setIsDialogOpen(false);
-        setFormData({ clue_text: "", location_name: "" });
-        setEditingClue(null);
-        fetchClues();
-        setTimeout(() => setSuccess(""), 3000);
     };
 
     const deleteClue = async (id: string) => {
         if (!confirm("Are you sure you want to delete this clue?")) return;
 
-        const supabase = createClient();
-        await supabase.from("clues").delete().eq("id", id);
+        try {
+            await fetch(`/api/admin/clues?id=${id}`, { method: "DELETE" });
 
-        // Reorder remaining clues
-        const remainingClues = clues.filter((c) => c.id !== id);
-        for (let i = 0; i < remainingClues.length; i++) {
-            await supabase
-                .from("clues")
-                .update({ step_number: i + 1 })
-                .eq("id", remainingClues[i].id);
+            // Reorder remaining clues
+            const remainingClues = clues.filter((c) => c.id !== id);
+            for (let i = 0; i < remainingClues.length; i++) {
+                await fetch("/api/admin/clues", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: remainingClues[i].id, step_number: i + 1 }),
+                });
+            }
+            fetchClues();
+        } catch (err) {
+            console.error("Delete error:", err);
         }
-
-        fetchClues();
     };
 
     const moveClue = async (index: number, direction: "up" | "down") => {
         if (direction === "up" && index === 0) return;
         if (direction === "down" && index === clues.length - 1) return;
 
-        const supabase = createClient();
         const swapIndex = direction === "up" ? index - 1 : index + 1;
 
-        await supabase
-            .from("clues")
-            .update({ step_number: swapIndex + 1 })
-            .eq("id", clues[index].id);
-
-        await supabase
-            .from("clues")
-            .update({ step_number: index + 1 })
-            .eq("id", clues[swapIndex].id);
-
-        fetchClues();
+        try {
+            await fetch("/api/admin/clues", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: clues[index].id, step_number: swapIndex + 1 }),
+            });
+            await fetch("/api/admin/clues", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: clues[swapIndex].id, step_number: index + 1 }),
+            });
+            fetchClues();
+        } catch (err) {
+            console.error("Move error:", err);
+        }
     };
 
     const openEditDialog = (clue: Clue) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { createClient } from "@/lib/supabase/client";
 import type { Event, Team, GeneratedTeamCredential } from "@/lib/types";
 
 export default function TeamsPage() {
@@ -28,6 +27,19 @@ export default function TeamsPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
+    const fetchTeams = useCallback(async () => {
+        if (!selectedEvent) return;
+        try {
+            const response = await fetch(`/api/admin/teams?event_id=${selectedEvent}`);
+            const data = await response.json();
+            if (data.success) {
+                setTeams(data.data || []);
+            }
+        } catch (err) {
+            console.error("Fetch teams error:", err);
+        }
+    }, [selectedEvent]);
+
     useEffect(() => {
         fetchEvents();
     }, []);
@@ -36,27 +48,20 @@ export default function TeamsPage() {
         if (selectedEvent) {
             fetchTeams();
         }
-    }, [selectedEvent]);
+    }, [selectedEvent, fetchTeams]);
 
     const fetchEvents = async () => {
-        const supabase = createClient();
-        const { data } = await supabase.from("events").select("*").order("created_at", { ascending: false });
-        setEvents(data || []);
-        if (data && data.length > 0) {
-            setSelectedEvent(data[0].id);
+        try {
+            const response = await fetch("/api/admin/events");
+            const data = await response.json();
+            if (data.success && data.data?.length > 0) {
+                setEvents(data.data);
+                setSelectedEvent(data.data[0].id);
+            }
+        } catch (err) {
+            console.error("Fetch events error:", err);
         }
         setIsLoading(false);
-    };
-
-    const fetchTeams = async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-            .from("teams")
-            .select("*")
-            .eq("event_id", selectedEvent)
-            .eq("is_admin", false)
-            .order("created_at", { ascending: true });
-        setTeams(data || []);
     };
 
     const generateTeams = async () => {
@@ -103,12 +108,16 @@ export default function TeamsPage() {
     };
 
     const toggleDisqualify = async (team: Team) => {
-        const supabase = createClient();
-        await supabase
-            .from("teams")
-            .update({ is_disqualified: !team.is_disqualified })
-            .eq("id", team.id);
-        fetchTeams();
+        try {
+            await fetch("/api/admin/teams", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: team.id, is_disqualified: !team.is_disqualified }),
+            });
+            fetchTeams();
+        } catch (err) {
+            console.error("Toggle error:", err);
+        }
     };
 
     const adjustScore = async (teamId: string, adjustment: number) => {
@@ -116,9 +125,16 @@ export default function TeamsPage() {
         if (!team) return;
 
         const newScore = Math.max(0, team.score + adjustment);
-        const supabase = createClient();
-        await supabase.from("teams").update({ score: newScore }).eq("id", teamId);
-        fetchTeams();
+        try {
+            await fetch("/api/admin/teams", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: teamId, score: newScore }),
+            });
+            fetchTeams();
+        } catch (err) {
+            console.error("Score adjust error:", err);
+        }
     };
 
     if (isLoading) {

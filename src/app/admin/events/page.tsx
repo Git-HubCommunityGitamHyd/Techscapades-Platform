@@ -14,7 +14,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { createClient } from "@/lib/supabase/client";
 import type { Event } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils/helpers";
 
@@ -22,6 +21,7 @@ export default function EventsPage() {
     const [events, setEvents] = useState<Event[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingEvent, setEditingEvent] = useState<Event | null>(null);
     const [formData, setFormData] = useState({
         name: "",
         start_time: "",
@@ -35,58 +35,113 @@ export default function EventsPage() {
     }, []);
 
     const fetchEvents = async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-            .from("events")
-            .select("*")
-            .order("created_at", { ascending: false });
-        setEvents(data || []);
+        try {
+            const response = await fetch("/api/admin/events");
+            const data = await response.json();
+            if (data.success) {
+                setEvents(data.data || []);
+            }
+        } catch (err) {
+            console.error("Fetch error:", err);
+        }
         setIsLoading(false);
     };
 
-    const handleCreate = async (e: React.FormEvent) => {
+    const formatDateTimeLocal = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toISOString().slice(0, 16);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
 
-        const supabase = createClient();
-        const { error: insertError } = await supabase.from("events").insert({
-            name: formData.name,
-            start_time: new Date(formData.start_time).toISOString(),
-            end_time: new Date(formData.end_time).toISOString(),
-            is_active: false,
-        });
+        try {
+            if (editingEvent) {
+                // Update existing event
+                const response = await fetch("/api/admin/events", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        id: editingEvent.id,
+                        name: formData.name,
+                        start_time: new Date(formData.start_time).toISOString(),
+                        end_time: new Date(formData.end_time).toISOString(),
+                    }),
+                });
 
-        if (insertError) {
-            setError("Failed to create event");
-            return;
+                const data = await response.json();
+                if (!data.success) {
+                    setError(data.message || "Failed to update event");
+                    return;
+                }
+                setSuccess("Event updated successfully!");
+            } else {
+                // Create new event
+                const response = await fetch("/api/admin/events", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(formData),
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    setError(data.message || "Failed to create event");
+                    return;
+                }
+                setSuccess("Event created successfully!");
+            }
+
+            setIsDialogOpen(false);
+            setFormData({ name: "", start_time: "", end_time: "" });
+            setEditingEvent(null);
+            fetchEvents();
+            setTimeout(() => setSuccess(""), 3000);
+        } catch (err) {
+            console.error("Submit error:", err);
+            setError("Failed to save event");
         }
+    };
 
-        setSuccess("Event created successfully!");
-        setIsDialogOpen(false);
+    const openEditDialog = (event: Event) => {
+        setEditingEvent(event);
+        setFormData({
+            name: event.name,
+            start_time: formatDateTimeLocal(event.start_time),
+            end_time: formatDateTimeLocal(event.end_time),
+        });
+        setIsDialogOpen(true);
+    };
+
+    const openCreateDialog = () => {
+        setEditingEvent(null);
         setFormData({ name: "", start_time: "", end_time: "" });
-        fetchEvents();
-        setTimeout(() => setSuccess(""), 3000);
+        setIsDialogOpen(true);
     };
 
     const toggleActive = async (event: Event) => {
-        const supabase = createClient();
-
-        // If activating, deactivate all other events first
-        if (!event.is_active) {
-            await supabase.from("events").update({ is_active: false }).neq("id", event.id);
+        try {
+            await fetch("/api/admin/events", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: event.id, is_active: !event.is_active }),
+            });
+            fetchEvents();
+        } catch (err) {
+            console.error("Toggle error:", err);
         }
-
-        await supabase.from("events").update({ is_active: !event.is_active }).eq("id", event.id);
-        fetchEvents();
     };
 
     const deleteEvent = async (id: string) => {
         if (!confirm("Are you sure? This will delete all teams, clues, and scans for this event.")) {
             return;
         }
-        const supabase = createClient();
-        await supabase.from("events").delete().eq("id", id);
-        fetchEvents();
+        try {
+            await fetch(`/api/admin/events?id=${id}`, { method: "DELETE" });
+            fetchEvents();
+        } catch (err) {
+            console.error("Delete error:", err);
+        }
     };
 
     if (isLoading) {
@@ -105,15 +160,26 @@ export default function EventsPage() {
                     <p className="text-slate-400 mt-1">Manage treasure hunt events</p>
                 </div>
 
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                    setIsDialogOpen(open);
+                    if (!open) {
+                        setEditingEvent(null);
+                        setFormData({ name: "", start_time: "", end_time: "" });
+                        setError("");
+                    }
+                }}>
                     <DialogTrigger asChild>
-                        <Button className="bg-purple-600 hover:bg-purple-700">+ New Event</Button>
+                        <Button className="bg-purple-600 hover:bg-purple-700" onClick={openCreateDialog}>
+                            + New Event
+                        </Button>
                     </DialogTrigger>
                     <DialogContent className="bg-slate-900 border-slate-700">
                         <DialogHeader>
-                            <DialogTitle className="text-white">Create New Event</DialogTitle>
+                            <DialogTitle className="text-white">
+                                {editingEvent ? "Edit Event" : "Create New Event"}
+                            </DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={handleCreate} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             {error && (
                                 <Alert variant="destructive">
                                     <AlertDescription>{error}</AlertDescription>
@@ -154,7 +220,7 @@ export default function EventsPage() {
                             </div>
 
                             <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">
-                                Create Event
+                                {editingEvent ? "Update Event" : "Create Event"}
                             </Button>
                         </form>
                     </DialogContent>
@@ -187,6 +253,14 @@ export default function EventsPage() {
                                     )}
                                 </CardTitle>
                                 <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openEditDialog(event)}
+                                        className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                    >
+                                        Edit
+                                    </Button>
                                     <Button
                                         size="sm"
                                         variant={event.is_active ? "destructive" : "default"}
