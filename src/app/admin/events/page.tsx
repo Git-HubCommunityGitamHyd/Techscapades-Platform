@@ -29,6 +29,12 @@ const hours = Array.from({ length: 9 }, (_, i) => String(i + 8).padStart(2, "0")
 // Generate minutes 00, 15, 30, 45
 const minutes = ["00", "15", "30", "45"];
 
+// Get today's date in YYYY-MM-DD format for min attribute
+const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+};
+
 export default function EventsPage() {
     const [events, setEvents] = useState<Event[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +88,17 @@ export default function EventsPage() {
 
         const startTime = combineDateTime(formData.start_date, formData.start_hour, formData.start_minute);
         const endTime = combineDateTime(formData.end_date, formData.end_hour, formData.end_minute);
+
+        // Validate that start date is not in the past (only for new events)
+        if (!editingEvent) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const startDate = new Date(formData.start_date);
+            if (startDate < today) {
+                setError("Start date cannot be in the past");
+                return;
+            }
+        }
 
         // Validate that end time is after start time
         if (new Date(endTime) <= new Date(startTime)) {
@@ -256,6 +273,7 @@ export default function EventsPage() {
                                         type="date"
                                         value={formData.start_date}
                                         onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                                        min={!editingEvent ? getTodayDate() : undefined}
                                         className="bg-slate-800 border-slate-700 text-white flex-1"
                                         required
                                     />

@@ -24,6 +24,7 @@ export default function TeamsPage() {
     const [generating, setGenerating] = useState(false);
     const [teamCount, setTeamCount] = useState(10);
     const [credentials, setCredentials] = useState<GeneratedTeamCredential[]>([]);
+    const [mustDownload, setMustDownload] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
@@ -81,6 +82,7 @@ export default function TeamsPage() {
             if (data.success) {
                 setSuccess(data.message);
                 setCredentials(data.credentials);
+                setMustDownload(true);
                 fetchTeams();
             } else {
                 setError(data.message);
@@ -91,6 +93,20 @@ export default function TeamsPage() {
             setGenerating(false);
         }
     };
+
+    // Warn user before leaving if they haven't downloaded credentials
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (mustDownload) {
+                e.preventDefault();
+                e.returnValue = "You have undownloaded team credentials. Are you sure you want to leave?";
+                return e.returnValue;
+            }
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [mustDownload]);
 
     const downloadCSV = () => {
         const csv = [
@@ -105,6 +121,13 @@ export default function TeamsPage() {
         a.download = `team_credentials_${new Date().toISOString().split("T")[0]}.csv`;
         a.click();
         URL.revokeObjectURL(url);
+
+        // Clear credentials after download and remove blocking
+        setMustDownload(false);
+        setTimeout(() => {
+            setCredentials([]);
+            setSuccess("");
+        }, 3000);
     };
 
     const toggleDisqualify = async (team: Team) => {
@@ -134,6 +157,49 @@ export default function TeamsPage() {
             fetchTeams();
         } catch (err) {
             console.error("Score adjust error:", err);
+        }
+    };
+
+    const addSingleTeam = async () => {
+        setGenerating(true);
+        setError("");
+        setCredentials([]);
+
+        try {
+            const response = await fetch("/api/admin/teams/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ event_id: selectedEvent, count: 1 }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                setSuccess(data.message);
+                setCredentials(data.credentials);
+                setMustDownload(true);
+                fetchTeams();
+            } else {
+                setError(data.message);
+            }
+        } catch {
+            setError("Failed to add team");
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const deleteTeam = async (teamId: string, teamName: string) => {
+        if (!confirm(`Are you sure you want to delete ${teamName}? This action cannot be undone.`)) return;
+
+        try {
+            await fetch(`/api/admin/teams?id=${teamId}`, { method: "DELETE" });
+            fetchTeams();
+            setSuccess(`${teamName} deleted successfully`);
+            setTimeout(() => setSuccess(""), 3000);
+        } catch (err) {
+            console.error("Delete error:", err);
+            setError("Failed to delete team");
         }
     };
 
@@ -171,79 +237,150 @@ export default function TeamsPage() {
                 </div>
             </div>
 
-            {/* Generate Teams */}
-            <Card className="bg-slate-800/50 border-slate-700">
-                <CardHeader>
-                    <CardTitle className="text-white">Generate Teams</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex gap-4 items-end">
-                        <div className="w-32">
-                            <Label className="text-slate-300">Number of Teams</Label>
-                            <Input
-                                type="number"
-                                min={1}
-                                max={100}
-                                value={teamCount}
-                                onChange={(e) => setTeamCount(parseInt(e.target.value) || 1)}
-                                className="bg-slate-900 border-slate-700 text-white"
-                            />
-                        </div>
-                        <Button
-                            onClick={generateTeams}
-                            disabled={generating || !selectedEvent}
-                            className="bg-purple-600 hover:bg-purple-700"
-                        >
-                            {generating ? "Generating..." : "Generate Teams"}
-                        </Button>
-                    </div>
-
-                    {error && (
-                        <Alert variant="destructive" className="mt-4">
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    )}
-
-                    {success && credentials.length > 0 && (
-                        <div className="mt-4 space-y-4">
-                            <Alert className="bg-green-500/10 border-green-500/50 text-green-400">
-                                <AlertDescription className="flex items-center justify-between">
-                                    {success}
-                                    <Button size="sm" onClick={downloadCSV} className="bg-green-600 hover:bg-green-700">
-                                        Download CSV
-                                    </Button>
-                                </AlertDescription>
-                            </Alert>
-
-                            <div className="max-h-48 overflow-y-auto bg-slate-900 rounded-lg p-4">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="text-slate-400 border-b border-slate-700">
-                                            <th className="text-left pb-2">Team</th>
-                                            <th className="text-left pb-2">Username</th>
-                                            <th className="text-left pb-2">Password</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {credentials.map((cred, i) => (
-                                            <tr key={i} className="text-white border-b border-slate-800">
-                                                <td className="py-2">{cred.team_name}</td>
-                                                <td className="py-2 font-mono text-xs">{cred.username}</td>
-                                                <td className="py-2 font-mono text-xs">{cred.password}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+            {/* Generate Teams - Only show when no teams exist */}
+            {teams.length === 0 && (
+                <Card className="bg-slate-800/50 border-slate-700">
+                    <CardHeader>
+                        <CardTitle className="text-white">Generate Teams</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex gap-4 items-end">
+                            <div className="w-32">
+                                <Label className="text-slate-300">Number of Teams</Label>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={100}
+                                    value={teamCount}
+                                    onChange={(e) => setTeamCount(parseInt(e.target.value) || 1)}
+                                    className="bg-slate-900 border-slate-700 text-white"
+                                />
                             </div>
+                            <Button
+                                onClick={generateTeams}
+                                disabled={generating || !selectedEvent}
+                                className="bg-purple-600 hover:bg-purple-700"
+                            >
+                                {generating ? "Generating..." : "Generate Teams"}
+                            </Button>
                         </div>
-                    )}
-                </CardContent>
-            </Card>
+
+                        {error && (
+                            <Alert variant="destructive" className="mt-4">
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
+
+                        {success && credentials.length > 0 && (
+                            <div className="mt-4 space-y-4">
+                                <Alert className={mustDownload ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-green-500/10 border-green-500/50 text-green-400"}>
+                                    <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                        <div>
+                                            <span className="font-semibold">{success}</span>
+                                            {mustDownload && (
+                                                <p className="text-sm mt-1 text-amber-200">
+                                                    ⚠️ You must download the CSV before leaving. Passwords won&apos;t be shown again!
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            onClick={downloadCSV}
+                                            className={mustDownload ? "bg-amber-600 hover:bg-amber-700 animate-pulse" : "bg-green-600 hover:bg-green-700"}
+                                        >
+                                            {mustDownload ? "⬇️ Download CSV (Required)" : "✓ Downloaded"}
+                                        </Button>
+                                    </AlertDescription>
+                                </Alert>
+
+                                <div className="max-h-48 overflow-y-auto bg-slate-900 rounded-lg p-4">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="text-slate-400 border-b border-slate-700">
+                                                <th className="text-left pb-2">Team</th>
+                                                <th className="text-left pb-2">Username</th>
+                                                <th className="text-left pb-2">Password</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {credentials.map((cred, i) => (
+                                                <tr key={i} className="text-white border-b border-slate-800">
+                                                    <td className="py-2">{cred.team_name}</td>
+                                                    <td className="py-2 font-mono text-xs">{cred.username}</td>
+                                                    <td className="py-2 font-mono text-xs">{cred.password}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Add Team Card - Show when teams exist and need to download */}
+            {teams.length > 0 && success && credentials.length > 0 && (
+                <Card className="bg-slate-800/50 border-slate-700">
+                    <CardContent className="pt-6">
+                        <Alert className={mustDownload ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-green-500/10 border-green-500/50 text-green-400"}>
+                            <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                <div>
+                                    <span className="font-semibold">{success}</span>
+                                    {mustDownload && (
+                                        <p className="text-sm mt-1 text-amber-200">
+                                            ⚠️ You must download the CSV before leaving. Passwords won&apos;t be shown again!
+                                        </p>
+                                    )}
+                                </div>
+                                <Button
+                                    size="sm"
+                                    onClick={downloadCSV}
+                                    className={mustDownload ? "bg-amber-600 hover:bg-amber-700 animate-pulse" : "bg-green-600 hover:bg-green-700"}
+                                >
+                                    {mustDownload ? "⬇️ Download CSV (Required)" : "✓ Downloaded"}
+                                </Button>
+                            </AlertDescription>
+                        </Alert>
+
+                        <div className="max-h-48 overflow-y-auto bg-slate-900 rounded-lg p-4 mt-4">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="text-slate-400 border-b border-slate-700">
+                                        <th className="text-left pb-2">Team</th>
+                                        <th className="text-left pb-2">Username</th>
+                                        <th className="text-left pb-2">Password</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {credentials.map((cred, i) => (
+                                        <tr key={i} className="text-white border-b border-slate-800">
+                                            <td className="py-2">{cred.team_name}</td>
+                                            <td className="py-2 font-mono text-xs">{cred.username}</td>
+                                            <td className="py-2 font-mono text-xs">{cred.password}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Teams List */}
             <Card className="bg-slate-800/50 border-slate-700">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-white">Teams ({teams.length})</CardTitle>
+                    {teams.length > 0 && (
+                        <Button
+                            onClick={addSingleTeam}
+                            disabled={generating || !selectedEvent}
+                            className="bg-purple-600 hover:bg-purple-700"
+                            size="sm"
+                        >
+                            {generating ? "Adding..." : "+ Add Team"}
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent>
                     {teams.length === 0 ? (
@@ -296,13 +433,23 @@ export default function TeamsPage() {
                                                 )}
                                             </td>
                                             <td className="py-3 text-right">
-                                                <Button
-                                                    size="sm"
-                                                    variant={team.is_disqualified ? "default" : "destructive"}
-                                                    onClick={() => toggleDisqualify(team)}
-                                                >
-                                                    {team.is_disqualified ? "Reinstate" : "Disqualify"}
-                                                </Button>
+                                                <div className="flex gap-2 justify-end">
+                                                    <Button
+                                                        size="sm"
+                                                        variant={team.is_disqualified ? "default" : "destructive"}
+                                                        onClick={() => toggleDisqualify(team)}
+                                                    >
+                                                        {team.is_disqualified ? "Reinstate" : "Disqualify"}
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => deleteTeam(team.id, team.team_name)}
+                                                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                                    >
+                                                        Delete
+                                                    </Button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
