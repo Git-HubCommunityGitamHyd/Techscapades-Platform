@@ -47,6 +47,27 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Check if the event is active
+        const { data: event, error: eventError } = await supabase
+            .from("events")
+            .select("is_active, name")
+            .eq("id", team.event_id)
+            .single();
+
+        if (eventError || !event) {
+            return NextResponse.json(
+                { success: false, message: "Event not found" },
+                { status: 404 }
+            );
+        }
+
+        if (!event.is_active) {
+            return NextResponse.json(
+                { success: false, message: `The event "${event.name}" is not currently active` },
+                { status: 403 }
+            );
+        }
+
         // Return team data (without password hash)
         const { password_hash: _, ...safeTeam } = team;
 
