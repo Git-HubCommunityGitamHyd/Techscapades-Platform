@@ -28,6 +28,7 @@ export interface Clue {
   step_number: number;
   clue_text: string;
   location_name: string | null;
+  admin_notes: string | null;
   created_at: string;
 }
 
@@ -79,6 +80,7 @@ export interface CreateEventForm {
 export interface CreateClueForm {
   clue_text: string;
   location_name?: string;
+  admin_notes?: string;
 }
 
 export interface CreateTeamForm {
