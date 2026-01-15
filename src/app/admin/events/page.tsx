@@ -24,10 +24,11 @@ import {
 import type { Event } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils/helpers";
 
-// Generate hours 08-16
-const hours = Array.from({ length: 9 }, (_, i) => String(i + 8).padStart(2, "0"));
-// Generate minutes 00, 15, 30, 45
-const minutes = ["00", "15", "30", "45"];
+// Generate all 24 hours (00-23)
+const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+// Generate all minutes (00-59) with common intervals first
+const commonMinutes = ["00", "15", "30", "45"];
+const allMinutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
 // Get today's date in YYYY-MM-DD format for min attribute
 const getTodayDate = () => {
@@ -48,6 +49,8 @@ export default function EventsPage() {
         end_date: "",
         end_hour: "17",
         end_minute: "00",
+        hunt_duration_minutes: "60",
+        hint_delay_minutes: "5",
     });
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -73,9 +76,8 @@ export default function EventsPage() {
         const date = new Date(dateStr);
         const dateOnly = date.toISOString().split("T")[0];
         const hour = String(date.getHours()).padStart(2, "0");
-        // Round to nearest 15 min
-        const min = String(Math.round(date.getMinutes() / 15) * 15).padStart(2, "0");
-        return { date: dateOnly, hour, minute: min === "60" ? "00" : min };
+        const min = String(date.getMinutes()).padStart(2, "0");
+        return { date: dateOnly, hour, minute: min };
     };
 
     const combineDateTime = (date: string, hour: string, minute: string) => {
@@ -116,6 +118,8 @@ export default function EventsPage() {
                         name: formData.name,
                         start_time: startTime,
                         end_time: endTime,
+                        hunt_duration_minutes: parseInt(formData.hunt_duration_minutes),
+                        hint_delay_minutes: parseInt(formData.hint_delay_minutes),
                     }),
                 });
 
@@ -133,6 +137,8 @@ export default function EventsPage() {
                         name: formData.name,
                         start_time: startTime,
                         end_time: endTime,
+                        hunt_duration_minutes: parseInt(formData.hunt_duration_minutes),
+                        hint_delay_minutes: parseInt(formData.hint_delay_minutes),
                     }),
                 });
 
@@ -163,6 +169,8 @@ export default function EventsPage() {
             end_date: "",
             end_hour: "17",
             end_minute: "00",
+            hunt_duration_minutes: "60",
+            hint_delay_minutes: "5",
         });
         setEditingEvent(null);
     };
@@ -179,6 +187,8 @@ export default function EventsPage() {
             end_date: end.date,
             end_hour: end.hour,
             end_minute: end.minute,
+            hunt_duration_minutes: String(event.hunt_duration_minutes || 60),
+            hint_delay_minutes: String(event.hint_delay_minutes || 5),
         });
         setIsDialogOpen(true);
     };
@@ -186,6 +196,54 @@ export default function EventsPage() {
     const openCreateDialog = () => {
         resetForm();
         setIsDialogOpen(true);
+    };
+
+    const startHunt = async (event: Event) => {
+        if (!confirm(`Start the hunt for "${event.name}"? All teams will be able to begin playing.`)) return;
+
+        try {
+            const response = await fetch("/api/admin/events/start-hunt", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ event_id: event.id }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setSuccess("Hunt started! All teams can now play.");
+                fetchEvents();
+                setTimeout(() => setSuccess(""), 3000);
+            } else {
+                setError(data.message || "Failed to start hunt");
+            }
+        } catch (err) {
+            console.error("Start hunt error:", err);
+            setError("Failed to start hunt");
+        }
+    };
+
+    const stopHunt = async (event: Event) => {
+        if (!confirm(`Stop the hunt for "${event.name}"? This will end the game for all teams.`)) return;
+
+        try {
+            const response = await fetch("/api/admin/events/stop-hunt", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ event_id: event.id }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setSuccess("Hunt stopped!");
+                fetchEvents();
+                setTimeout(() => setSuccess(""), 3000);
+            } else {
+                setError(data.message || "Failed to stop hunt");
+            }
+        } catch (err) {
+            console.error("Stop hunt error:", err);
+            setError("Failed to stop hunt");
+        }
     };
 
     const toggleActive = async (event: Event) => {
@@ -281,7 +339,7 @@ export default function EventsPage() {
                                         <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-white/10 max-h-48">
+                                        <SelectContent className="bg-zinc-900 border-white/10 max-h-56">
                                             {hours.map((h) => (
                                                 <SelectItem key={h} value={h} className="text-white">{h}</SelectItem>
                                             ))}
@@ -292,8 +350,8 @@ export default function EventsPage() {
                                         <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-white/10">
-                                            {minutes.map((m) => (
+                                        <SelectContent className="bg-zinc-900 border-white/10 max-h-56">
+                                            {allMinutes.map((m) => (
                                                 <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
                                             ))}
                                         </SelectContent>
@@ -317,7 +375,7 @@ export default function EventsPage() {
                                         <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-white/10 max-h-48">
+                                        <SelectContent className="bg-zinc-900 border-white/10 max-h-56">
                                             {hours.map((h) => (
                                                 <SelectItem key={h} value={h} className="text-white">{h}</SelectItem>
                                             ))}
@@ -328,12 +386,40 @@ export default function EventsPage() {
                                         <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-900 border-white/10">
-                                            {minutes.map((m) => (
+                                        <SelectContent className="bg-zinc-900 border-white/10 max-h-56">
+                                            {allMinutes.map((m) => (
                                                 <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                </div>
+                            </div>
+
+                            {/* Hunt Settings */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-gray-300">Hunt Duration (min)</Label>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        max="180"
+                                        value={formData.hunt_duration_minutes}
+                                        onChange={(e) => setFormData({ ...formData, hunt_duration_minutes: e.target.value })}
+                                        className="bg-zinc-900 border-white/10 text-white"
+                                    />
+                                    <p className="text-xs text-gray-500">Time teams have to complete</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-gray-300">Hint Delay (min)</Label>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        max="30"
+                                        value={formData.hint_delay_minutes}
+                                        onChange={(e) => setFormData({ ...formData, hint_delay_minutes: e.target.value })}
+                                        className="bg-zinc-900 border-white/10 text-white"
+                                    />
+                                    <p className="text-xs text-gray-500">Wait before hints available</p>
                                 </div>
                             </div>
 
@@ -359,58 +445,126 @@ export default function EventsPage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    events.map((event) => (
-                        <Card key={event.id} className="bg-zinc-900/50 border-white/10">
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-white flex items-center gap-3">
-                                    {event.name}
+                    events.map((event) => {
+                        const isHuntStarted = !!event.hunt_started_at;
+                        const huntEndTime = isHuntStarted
+                            ? new Date(new Date(event.hunt_started_at!).getTime() + (event.hunt_duration_minutes || 60) * 60 * 1000)
+                            : null;
+                        const isHuntEnded = huntEndTime ? new Date() > huntEndTime : false;
+
+                        return (
+                            <Card key={event.id} className="bg-zinc-900/50 border-white/10">
+                                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <CardTitle className="text-white flex items-center gap-3 flex-wrap">
+                                        {event.name}
+                                        {event.is_active && (
+                                            <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                                                Active
+                                            </Badge>
+                                        )}
+                                        {isHuntStarted && !isHuntEnded && (
+                                            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 animate-pulse">
+                                                🎮 Hunt LIVE
+                                            </Badge>
+                                        )}
+                                        {isHuntEnded && (
+                                            <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/50">
+                                                Hunt Ended
+                                            </Badge>
+                                        )}
+                                    </CardTitle>
+                                    <div className="flex gap-2 flex-wrap">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => openEditDialog(event)}
+                                            className="border-slate-600 text-gray-300 hover:bg-slate-700 hover:text-white"
+                                        >
+                                            Edit
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant={event.is_active ? "destructive" : "default"}
+                                            onClick={() => toggleActive(event)}
+                                            className={event.is_active ? "" : "bg-green-600 hover:bg-green-700"}
+                                        >
+                                            {event.is_active ? "Deactivate" : "Activate"}
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => deleteEvent(event.id)}
+                                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                        >
+                                            Delete
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                        <div>
+                                            <span className="text-gray-400">Event Start:</span>
+                                            <p className="text-white">{formatDateTime(event.start_time)}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-400">Event End:</span>
+                                            <p className="text-white">{formatDateTime(event.end_time)}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-400">Hunt Duration:</span>
+                                            <p className="text-white">{event.hunt_duration_minutes || 60} minutes</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-400">Hint Delay:</span>
+                                            <p className="text-white">{event.hint_delay_minutes || 5} minutes</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Hunt Control */}
                                     {event.is_active && (
-                                        <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
-                                            Active
-                                        </Badge>
+                                        <div className="pt-4 border-t border-white/10">
+                                            {!isHuntStarted ? (
+                                                <Button
+                                                    onClick={() => startHunt(event)}
+                                                    className="w-full md:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6"
+                                                >
+                                                    🚀 Start Hunt
+                                                </Button>
+                                            ) : isHuntEnded ? (
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-gray-400">Hunt has ended</span>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => startHunt(event)}
+                                                        className="border-slate-600 text-gray-300"
+                                                    >
+                                                        Restart Hunt
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-sm">
+                                                        <span className="text-gray-400">Started at: </span>
+                                                        <span className="text-white">
+                                                            {formatDateTime(event.hunt_started_at!)}
+                                                        </span>
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="destructive"
+                                                        onClick={() => stopHunt(event)}
+                                                    >
+                                                        ⏹️ Stop Hunt
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
-                                </CardTitle>
-                                <div className="flex gap-2">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => openEditDialog(event)}
-                                        className="border-slate-600 text-gray-300 hover:bg-slate-700 hover:text-white"
-                                    >
-                                        Edit
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant={event.is_active ? "destructive" : "default"}
-                                        onClick={() => toggleActive(event)}
-                                        className={event.is_active ? "" : "bg-green-600 hover:bg-green-700"}
-                                    >
-                                        {event.is_active ? "Deactivate" : "Activate"}
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => deleteEvent(event.id)}
-                                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                                    >
-                                        Delete
-                                    </Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <span className="text-gray-400">Start:</span>
-                                        <p className="text-white">{formatDateTime(event.start_time)}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-400">End:</span>
-                                        <p className="text-white">{formatDateTime(event.end_time)}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))
+                                </CardContent>
+                            </Card>
+                        );
+                    })
                 )}
             </div>
         </div>

@@ -91,15 +91,46 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Also generate QR codes for fake QRs
+        const { data: fakeQRs } = await supabase
+            .from("qr_codes")
+            .select("*")
+            .eq("event_id", event_id)
+            .eq("is_fake", true);
+
+        let fakeCount = 0;
+        if (fakeQRs && fakeQRs.length > 0) {
+            const fakeFolder = zip.folder("fake_qrs");
+            for (const fakeQR of fakeQRs) {
+                const scanUrl = `${appUrl}/scan?token=${fakeQR.qr_token}`;
+                const qrDataUrl = await QRCode.toDataURL(scanUrl, {
+                    width: 400,
+                    margin: 2,
+                    color: {
+                        dark: "#dc2626", // Red color for fake QRs
+                        light: "#ffffff",
+                    },
+                });
+
+                const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, "");
+                const imageBuffer = Buffer.from(base64Data, "base64");
+
+                const fileName = `FAKE_${(fakeQR.fake_label || "fake").replace(/[^a-zA-Z0-9]/g, "_")}.png`;
+                fakeFolder?.file(fileName, imageBuffer);
+                fakeCount++;
+            }
+        }
+
         // Generate zip file
         const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
         const base64Zip = zipBuffer.toString("base64");
 
         return NextResponse.json({
             success: true,
-            message: `Generated ${clues.length} QR codes`,
+            message: `Generated ${clues.length} clue QR codes${fakeCount > 0 ? ` and ${fakeCount} fake QR codes` : ""}`,
             zipBase64: base64Zip,
             clueCount: clues.length,
+            fakeCount,
         });
     } catch (error) {
         console.error("QR generation error:", error);

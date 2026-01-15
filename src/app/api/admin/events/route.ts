@@ -25,7 +25,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { name, start_time, end_time } = body;
+        const { name, start_time, end_time, hunt_duration_minutes = 60, hint_delay_minutes = 5 } = body;
 
         if (!name || !start_time || !end_time) {
             return NextResponse.json({ success: false, message: "Missing required fields" }, { status: 400 });
@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
                 start_time: new Date(start_time).toISOString(),
                 end_time: new Date(end_time).toISOString(),
                 is_active: false,
+                hunt_duration_minutes,
+                hint_delay_minutes,
             })
             .select()
             .single();

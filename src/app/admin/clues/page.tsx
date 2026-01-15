@@ -34,6 +34,7 @@ export default function CluesPage() {
     const [formData, setFormData] = useState({
         clue_text: "",
         location_name: "",
+        hint_text: "",
         admin_notes: "",
     });
     const [error, setError] = useState("");
@@ -89,6 +90,7 @@ export default function CluesPage() {
                         id: editingClue.id,
                         clue_text: formData.clue_text,
                         location_name: formData.location_name || null,
+                        hint_text: formData.hint_text || null,
                         admin_notes: formData.admin_notes || null,
                     }),
                 });
@@ -107,6 +109,7 @@ export default function CluesPage() {
                         step_number: clues.length + 1,
                         clue_text: formData.clue_text,
                         location_name: formData.location_name || null,
+                        hint_text: formData.hint_text || null,
                         admin_notes: formData.admin_notes || null,
                     }),
                 });
@@ -119,7 +122,7 @@ export default function CluesPage() {
             }
 
             setIsDialogOpen(false);
-            setFormData({ clue_text: "", location_name: "", admin_notes: "" });
+            setFormData({ clue_text: "", location_name: "", hint_text: "", admin_notes: "" });
             setEditingClue(null);
             fetchClues();
             setTimeout(() => setSuccess(""), 3000);
@@ -178,6 +181,7 @@ export default function CluesPage() {
         setFormData({
             clue_text: clue.clue_text,
             location_name: clue.location_name || "",
+            hint_text: clue.hint_text || "",
             admin_notes: clue.admin_notes || "",
         });
         setIsDialogOpen(true);
@@ -203,7 +207,7 @@ export default function CluesPage() {
                     setIsDialogOpen(open);
                     if (!open) {
                         setEditingClue(null);
-                        setFormData({ clue_text: "", location_name: "", admin_notes: "" });
+                        setFormData({ clue_text: "", location_name: "", hint_text: "", admin_notes: "" });
                     }
                 }}>
                     <DialogTrigger asChild>
@@ -236,13 +240,24 @@ export default function CluesPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-gray-300">Location Name (optional hint)</Label>
+                                <Label className="text-gray-300">Location Name (always visible)</Label>
                                 <Input
                                     value={formData.location_name}
                                     onChange={(e) => setFormData({ ...formData, location_name: e.target.value })}
-                                    placeholder="e.g., Library, Cafeteria"
+                                    placeholder="e.g., Near Library, Main Building"
                                     className="bg-zinc-900 border-white/10 text-white"
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-blue-300">💡 Timed Hint (shown after delay)</Label>
+                                <Textarea
+                                    value={formData.hint_text}
+                                    onChange={(e) => setFormData({ ...formData, hint_text: e.target.value })}
+                                    placeholder="This hint will appear after the configured delay... Teams lose 5 points if they use it."
+                                    className="bg-blue-900/20 border-blue-700/50 text-blue-100 min-h-[80px] placeholder:text-blue-700/70"
+                                />
+                                <p className="text-xs text-blue-400">Teams get +5 pts instead of +10 if they use this hint</p>
                             </div>
 
                             <div className="space-y-2">

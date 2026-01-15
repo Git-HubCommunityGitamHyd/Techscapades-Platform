@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Team, Clue } from "@/lib/types";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { Team, Clue, Event, TeamClueOrder } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -13,8 +14,34 @@ export default function HuntPage() {
     const { team, player, isLoading: authLoading, logout } = useAuth();
     const [localTeam, setLocalTeam] = useState<Team | null>(null);
     const [currentClue, setCurrentClue] = useState<Clue | null>(null);
+    const [currentClueOrder, setCurrentClueOrder] = useState<TeamClueOrder | null>(null);
     const [totalClues, setTotalClues] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
+    const [event, setEvent] = useState<Event | null>(null);
+    const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+    
+    // Hint system state
+    const [hintTimeRemaining, setHintTimeRemaining] = useState<number | null>(null);
+    const [showHint, setShowHint] = useState(false);
+    const [hintText, setHintText] = useState<string | null>(null);
+    const [hintLoading, setHintLoading] = useState(false);
+
+    const fetchEvent = useCallback(async (eventId: string) => {
+        try {
+            const supabase = createClient();
+            const { data } = await supabase
+                .from("events")
+                .select("*")
+                .eq("id", eventId)
+                .single();
+            
+            if (data) {
+                setEvent(data);
+            }
+        } catch (error) {
+            console.error("Error fetching event:", error);
+        }
+    }, []);
 
     const fetchCurrentClue = useCallback(async (teamData: Team) => {
         try {
@@ -29,12 +56,28 @@ export default function HuntPage() {
 
             const { data: clueOrder } = await supabase
                 .from("team_clue_order")
-                .select("clue_id")
+                .select("*")
                 .eq("team_id", teamData.id)
                 .eq("step_index", teamData.current_step)
                 .single();
 
             if (clueOrder) {
+                setCurrentClueOrder(clueOrder);
+                
+                // Mark clue as started if not already
+                if (!clueOrder.clue_started_at) {
+                    await supabase
+                        .from("team_clue_order")
+                        .update({ clue_started_at: new Date().toISOString() })
+                        .eq("id", clueOrder.id);
+                    clueOrder.clue_started_at = new Date().toISOString();
+                }
+
+                // Check if hint was already viewed
+                if (clueOrder.hint_viewed) {
+                    setShowHint(true);
+                }
+
                 const { data: clue } = await supabase
                     .from("clues")
                     .select("*")
@@ -42,6 +85,11 @@ export default function HuntPage() {
                     .single();
 
                 setCurrentClue(clue || null);
+                
+                // If hint was viewed, show it
+                if (clueOrder.hint_viewed && clue?.hint_text) {
+                    setHintText(clue.hint_text);
+                }
             }
         } catch (error) {
             console.error("Error fetching clue:", error);
@@ -57,11 +105,14 @@ export default function HuntPage() {
         }
 
         setLocalTeam(team);
+        fetchEvent(team.event_id);
         fetchCurrentClue(team);
         setIsLoading(false);
 
         const supabase = createClient();
-        const channel = supabase
+        
+        // Subscribe to team updates
+        const teamChannel = supabase
             .channel("team-updates")
             .on(
                 "postgres_changes",
@@ -80,13 +131,118 @@ export default function HuntPage() {
             )
             .subscribe();
 
+        // Subscribe to event updates (for hunt start/stop)
+        const eventChannel = supabase
+            .channel("event-updates")
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "events",
+                    filter: `id=eq.${team.event_id}`,
+                },
+                (payload) => {
+                    const updatedEvent = payload.new as Event;
+                    setEvent(updatedEvent);
+                }
+            )
+            .subscribe();
+
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(teamChannel);
+            supabase.removeChannel(eventChannel);
         };
-    }, [authLoading, team, fetchCurrentClue]);
+    }, [authLoading, team, fetchCurrentClue, fetchEvent]);
+
+    // Timer effect - updates every second when hunt is active
+    useEffect(() => {
+        if (!event?.hunt_started_at) {
+            setTimeRemaining(null);
+            return;
+        }
+
+        const huntDuration = (event.hunt_duration_minutes || 60) * 60 * 1000; // in ms
+        const huntStartTime = new Date(event.hunt_started_at).getTime();
+        const huntEndTime = huntStartTime + huntDuration;
+
+        const updateTimer = () => {
+            const now = Date.now();
+            const remaining = Math.max(0, huntEndTime - now);
+            setTimeRemaining(remaining);
+        };
+
+        updateTimer(); // Initial update
+        const interval = setInterval(updateTimer, 1000);
+
+        return () => clearInterval(interval);
+    }, [event?.hunt_started_at, event?.hunt_duration_minutes]);
+
+    // Hint timer effect - countdown until hint becomes available
+    useEffect(() => {
+        if (!currentClueOrder?.clue_started_at || !event?.hint_delay_minutes || showHint) {
+            setHintTimeRemaining(null);
+            return;
+        }
+
+        const hintDelay = (event.hint_delay_minutes || 5) * 60 * 1000; // in ms
+        const clueStartTime = new Date(currentClueOrder.clue_started_at).getTime();
+        const hintAvailableTime = clueStartTime + hintDelay;
+
+        const updateHintTimer = () => {
+            const now = Date.now();
+            const remaining = Math.max(0, hintAvailableTime - now);
+            setHintTimeRemaining(remaining);
+        };
+
+        updateHintTimer();
+        const interval = setInterval(updateHintTimer, 1000);
+
+        return () => clearInterval(interval);
+    }, [currentClueOrder?.clue_started_at, event?.hint_delay_minutes, showHint]);
+
+    // View hint handler
+    const viewHint = async () => {
+        if (!localTeam || !currentClue) return;
+        
+        setHintLoading(true);
+        try {
+            const response = await fetch("/api/hints/view", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    team_id: localTeam.id,
+                    clue_id: currentClue.id,
+                    player_id: player?.id,
+                }),
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                setShowHint(true);
+                setHintText(data.hint_text || currentClue.hint_text || "No hint available");
+            } else {
+                alert(data.message || "Failed to view hint");
+            }
+        } catch (error) {
+            console.error("View hint error:", error);
+            alert("Failed to view hint");
+        } finally {
+            setHintLoading(false);
+        }
+    };
 
     const handleLogout = () => {
         logout();
+    };
+
+    // Format time remaining as MM:SS
+    const formatTimeRemaining = (ms: number) => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
     if (isLoading) {
@@ -99,7 +255,9 @@ export default function HuntPage() {
 
     if (!localTeam) return null;
 
-    const isHuntComplete = localTeam.current_step >= totalClues;
+    const isHuntStarted = !!event?.hunt_started_at;
+    const isHuntTimedOut = timeRemaining !== null && timeRemaining === 0;
+    const isHuntComplete = localTeam.current_step >= totalClues && totalClues > 0;
     const isDisqualified = localTeam.is_disqualified;
 
     return (
@@ -120,17 +278,40 @@ export default function HuntPage() {
                     </Button>
                 </div>
 
+                {/* Global Timer - Only show when hunt is active */}
+                {isHuntStarted && !isHuntTimedOut && timeRemaining !== null && (
+                    <div className={`text-center py-3 px-4 rounded-lg ${
+                        timeRemaining < 5 * 60 * 1000 
+                            ? 'bg-red-500/20 border border-red-500/50' 
+                            : 'bg-white/5 border border-white/10'
+                    }`}>
+                        <p className="text-xs text-gray-400 mb-1">⏱️ Time Remaining</p>
+                        <p className={`text-2xl font-mono font-bold ${
+                            timeRemaining < 5 * 60 * 1000 ? 'text-red-400 animate-pulse' : 'text-white'
+                        }`}>
+                            {formatTimeRemaining(timeRemaining)}
+                        </p>
+                    </div>
+                )}
+
                 {/* Progress Badge */}
-                <div className="flex gap-2">
-                    <Badge variant="outline" className="border-white/30 text-gray-300">
-                        Step {localTeam.current_step + 1} of {totalClues || "?"}
-                    </Badge>
+                <div className="flex gap-2 flex-wrap">
+                    {isHuntStarted && (
+                        <Badge variant="outline" className="border-white/30 text-gray-300">
+                            Step {localTeam.current_step + 1} of {totalClues || "?"}
+                        </Badge>
+                    )}
                     {isDisqualified && (
                         <Badge variant="destructive">Disqualified</Badge>
                     )}
                     {isHuntComplete && !isDisqualified && (
                         <Badge className="bg-white/10 text-white border-white/30">
                             Hunt Complete! 🎉
+                        </Badge>
+                    )}
+                    {isHuntTimedOut && !isHuntComplete && (
+                        <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">
+                            Time&apos;s Up!
                         </Badge>
                     )}
                 </div>
@@ -144,6 +325,31 @@ export default function HuntPage() {
                             <p className="text-gray-400">
                                 Your team has been disqualified from this event. Please contact an event organizer for more information.
                             </p>
+                        </CardContent>
+                    </Card>
+                ) : !isHuntStarted ? (
+                    <Card className="bg-zinc-950 border-white/10">
+                        <CardContent className="pt-6 text-center">
+                            <div className="text-6xl mb-4">⏳</div>
+                            <h2 className="text-xl font-bold text-white mb-2">Waiting for Hunt to Start</h2>
+                            <p className="text-gray-400">
+                                The hunt hasn&apos;t started yet. Wait for the organizer to begin the game!
+                            </p>
+                        </CardContent>
+                    </Card>
+                ) : isHuntTimedOut && !isHuntComplete ? (
+                    <Card className="bg-yellow-500/10 border-yellow-500/30">
+                        <CardContent className="pt-6 text-center">
+                            <div className="text-6xl mb-4">⏰</div>
+                            <h2 className="text-xl font-bold text-yellow-400 mb-2">Time&apos;s Up!</h2>
+                            <p className="text-gray-400 mb-4">
+                                The hunt has ended. Your final score: {localTeam.score} points
+                            </p>
+                            <Link href="/progress">
+                                <Button className="bg-white hover:bg-gray-200 text-black">
+                                    View Your Journey
+                                </Button>
+                            </Link>
                         </CardContent>
                     </Card>
                 ) : isHuntComplete ? (
@@ -165,21 +371,59 @@ export default function HuntPage() {
                     <>
                         <Card className="bg-zinc-950 border-white/10">
                             <CardHeader>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                                        <span className="text-white font-bold">{localTeam.current_step + 1}</span>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                            <span className="text-white font-bold">{localTeam.current_step + 1}</span>
+                                        </div>
+                                        <CardTitle className="text-lg text-white">Current Clue</CardTitle>
                                     </div>
-                                    <CardTitle className="text-lg text-white">Current Clue</CardTitle>
+                                    {showHint && (
+                                        <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/50">
+                                            Hint Used (-5 pts)
+                                        </Badge>
+                                    )}
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="space-y-4">
                                 <p className="text-gray-300 text-lg leading-relaxed whitespace-pre-wrap">
                                     {currentClue.clue_text}
                                 </p>
                                 {currentClue.location_name && (
-                                    <p className="mt-4 text-sm text-gray-400">
-                                        📍 Hint: {currentClue.location_name}
+                                    <p className="text-sm text-gray-400">
+                                        📍 Location: {currentClue.location_name}
                                     </p>
+                                )}
+
+                                {/* Timed Hint Section */}
+                                {currentClue.hint_text && (
+                                    <div className="pt-4 border-t border-white/10">
+                                        {showHint ? (
+                                            <Alert className="bg-blue-500/10 border-blue-500/30">
+                                                <AlertDescription className="text-blue-200">
+                                                    <span className="font-semibold text-blue-300">💡 Hint: </span>
+                                                    {hintText}
+                                                </AlertDescription>
+                                            </Alert>
+                                        ) : hintTimeRemaining === 0 ? (
+                                            <Button
+                                                onClick={viewHint}
+                                                disabled={hintLoading}
+                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                                            >
+                                                {hintLoading ? "Loading..." : "💡 Show Hint (-5 points)"}
+                                            </Button>
+                                        ) : hintTimeRemaining !== null ? (
+                                            <div className="text-center py-2 px-4 bg-white/5 rounded-lg border border-white/10">
+                                                <p className="text-sm text-gray-400">
+                                                    💡 Hint available in{" "}
+                                                    <span className="font-mono text-white">
+                                                        {Math.ceil(hintTimeRemaining / 1000)}s
+                                                    </span>
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 )}
                             </CardContent>
                         </Card>
@@ -196,10 +440,10 @@ export default function HuntPage() {
                 ) : (
                     <Card className="bg-zinc-950 border-white/10">
                         <CardContent className="pt-6 text-center">
-                            <div className="text-6xl mb-4">⏳</div>
-                            <h2 className="text-xl font-bold text-white mb-2">Waiting for Hunt to Start</h2>
+                            <div className="text-6xl mb-4">🎯</div>
+                            <h2 className="text-xl font-bold text-white mb-2">Getting Your Clues Ready...</h2>
                             <p className="text-gray-400">
-                                The event organizer hasn&apos;t set up your clues yet. Please wait for instructions.
+                                The hunt has started! Your first clue is being loaded.
                             </p>
                         </CardContent>
                     </Card>

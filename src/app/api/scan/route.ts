@@ -58,21 +58,41 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Check time constraints
-        const now = new Date();
-        const startTime = new Date(event.start_time);
-        const endTime = new Date(event.end_time);
-
-        if (now < startTime) {
+        // Check if hunt has been started by admin
+        if (!event.hunt_started_at) {
             return NextResponse.json(
-                { success: false, message: "The hunt hasn't started yet" },
+                { success: false, message: "The hunt hasn't been started yet. Wait for the organizer!" },
                 { status: 403 }
             );
         }
 
-        if (now > endTime) {
+        // Check if hunt timer has expired
+        const huntStartTime = new Date(event.hunt_started_at).getTime();
+        const huntDuration = (event.hunt_duration_minutes || 60) * 60 * 1000;
+        const huntEndTime = huntStartTime + huntDuration;
+        const now = Date.now();
+
+        if (now > huntEndTime) {
             return NextResponse.json(
-                { success: false, message: "The hunt has ended" },
+                { success: false, message: "Time's up! The hunt has ended." },
+                { status: 403 }
+            );
+        }
+
+        // Check event time constraints (event window)
+        const eventStartTime = new Date(event.start_time);
+        const eventEndTime = new Date(event.end_time);
+
+        if (new Date() < eventStartTime) {
+            return NextResponse.json(
+                { success: false, message: "The event hasn't started yet" },
+                { status: 403 }
+            );
+        }
+
+        if (new Date() > eventEndTime) {
+            return NextResponse.json(
+                { success: false, message: "The event has ended" },
                 { status: 403 }
             );
         }
@@ -92,10 +112,30 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Handle fake QR codes (rickrolls, memes, etc.)
+        if (qrCode.is_fake) {
+            // Record the fake QR scan for Hall of Shame
+            await supabase
+                .from("fake_qr_scans")
+                .insert({
+                    qr_code_id: qrCode.id,
+                    team_id: team_id,
+                    player_id: null, // Can be updated if we track individual player
+                });
+
+            return NextResponse.json({
+                success: false,
+                message: "😈 Gotcha! You fell for a fake QR!",
+                isFake: true,
+                redirect_url: qrCode.redirect_url,
+                fake_label: qrCode.fake_label,
+            });
+        }
+
         // Get the team's expected next clue
         const { data: expectedClueOrder } = await supabase
             .from("team_clue_order")
-            .select("clue_id")
+            .select("clue_id, hint_viewed")
             .eq("team_id", team_id)
             .eq("step_index", team.current_step)
             .single();
@@ -147,8 +187,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Check if hint was used for this clue
+        const hintUsed = expectedClueOrder.hint_viewed === true;
+        const pointsEarned = hintUsed ? 5 : 10; // 5 points if hint used, 10 if not
+
         // Update team score and step
-        const newScore = team.score + 10; // 10 points per clue
+        const newScore = team.score + pointsEarned;
         const newStep = team.current_step + 1;
 
         const { error: updateError } = await supabase
@@ -171,13 +215,20 @@ export async function POST(request: NextRequest) {
             .eq("event_id", team.event_id);
 
         const isComplete = newStep >= (totalClues || 0);
+        
+        // Build message with points info
+        let message = isComplete 
+            ? "🎉 Congratulations! You've completed the hunt!" 
+            : `Correct! +${pointsEarned} points${hintUsed ? " (hint used)" : ""}. Move on to the next clue.`;
 
         return NextResponse.json({
             success: true,
-            message: isComplete ? "🎉 Congratulations! You've completed the hunt!" : "Correct! Move on to the next clue.",
+            message,
             newScore,
             nextStep: newStep,
             isComplete,
+            pointsEarned,
+            hintUsed,
         });
     } catch (error) {
         console.error("Scan error:", error);

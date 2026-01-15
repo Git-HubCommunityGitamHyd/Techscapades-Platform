@@ -13,11 +13,16 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
-import type { Event, Team, Scan, Clue } from "@/lib/types";
+import type { Event, Team, Scan, Clue, FakeQRScan, QRCode } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils/helpers";
 
 interface TeamWithScan extends Team {
     lastScan?: Scan;
+}
+
+interface FakeQRScanWithDetails extends FakeQRScan {
+    team?: Team;
+    qr_code?: QRCode;
 }
 
 export default function MonitorPage() {
@@ -28,6 +33,8 @@ export default function MonitorPage() {
     const [totalClues, setTotalClues] = useState(0);
     const [showClueReference, setShowClueReference] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+    const [fakeQRScans, setFakeQRScans] = useState<FakeQRScanWithDetails[]>([]);
 
     const fetchTeams = useCallback(async () => {
         if (!selectedEvent) return;
@@ -74,6 +81,30 @@ export default function MonitorPage() {
         }
     }, [selectedEvent]);
 
+    const fetchFakeQRScans = useCallback(async () => {
+        if (!selectedEvent) return;
+
+        const supabase = createClient();
+
+        // Get fake QR scans with team and qr_code details
+        const { data: fakeScans } = await supabase
+            .from("fake_qr_scans")
+            .select(`
+                *,
+                team:teams(*),
+                qr_code:qr_codes(*)
+            `)
+            .order("scanned_at", { ascending: false })
+            .limit(20);
+
+        // Filter to only include scans from teams in the selected event
+        const filteredScans = (fakeScans || []).filter(
+            (scan: FakeQRScanWithDetails) => scan.team?.event_id === selectedEvent
+        );
+
+        setFakeQRScans(filteredScans);
+    }, [selectedEvent]);
+
     useEffect(() => {
         fetchEvents();
     }, []);
@@ -81,6 +112,7 @@ export default function MonitorPage() {
     useEffect(() => {
         if (selectedEvent) {
             fetchTeams();
+            fetchFakeQRScans();
 
             // Set up realtime subscriptions
             const supabase = createClient();
@@ -116,12 +148,72 @@ export default function MonitorPage() {
                 )
                 .subscribe();
 
+            // Subscribe to fake QR scans (Hall of Shame)
+            const fakeScansChannel = supabase
+                .channel("monitor-fake-scans")
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "INSERT",
+                        schema: "public",
+                        table: "fake_qr_scans",
+                    },
+                    () => {
+                        fetchFakeQRScans();
+                    }
+                )
+                .subscribe();
+
+            // Subscribe to event updates (for hunt start/stop)
+            const eventsChannel = supabase
+                .channel("monitor-events")
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "UPDATE",
+                        schema: "public",
+                        table: "events",
+                        filter: `id=eq.${selectedEvent}`,
+                    },
+                    () => {
+                        fetchEvents();
+                    }
+                )
+                .subscribe();
+
             return () => {
                 supabase.removeChannel(teamsChannel);
                 supabase.removeChannel(scansChannel);
+                supabase.removeChannel(fakeScansChannel);
+                supabase.removeChannel(eventsChannel);
             };
         }
-    }, [selectedEvent, fetchTeams]);
+    }, [selectedEvent, fetchTeams, fetchFakeQRScans]);
+
+    // Timer effect - updates every second when hunt is active
+    useEffect(() => {
+        const activeEvent = events.find((e) => e.id === selectedEvent);
+        
+        if (!activeEvent?.hunt_started_at) {
+            setTimeRemaining(null);
+            return;
+        }
+
+        const huntDuration = (activeEvent.hunt_duration_minutes || 60) * 60 * 1000;
+        const huntStartTime = new Date(activeEvent.hunt_started_at).getTime();
+        const huntEndTime = huntStartTime + huntDuration;
+
+        const updateTimer = () => {
+            const now = Date.now();
+            const remaining = Math.max(0, huntEndTime - now);
+            setTimeRemaining(remaining);
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+
+        return () => clearInterval(interval);
+    }, [events, selectedEvent]);
 
     const fetchEvents = async () => {
         const supabase = createClient();
@@ -163,6 +255,13 @@ export default function MonitorPage() {
         const supabase = createClient();
         await supabase.from("events").update({ is_active: false }).eq("id", selectedEvent);
         fetchEvents();
+    };
+
+    const formatTimeRemaining = (ms: number) => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
     if (isLoading) {
@@ -241,6 +340,47 @@ export default function MonitorPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Hunt Timer Status */}
+            {activeEvent && (
+                <Card className={`border ${
+                    !activeEvent.hunt_started_at 
+                        ? 'bg-gray-900/50 border-gray-700' 
+                        : timeRemaining === 0 
+                            ? 'bg-red-900/30 border-red-500/50' 
+                            : timeRemaining && timeRemaining < 5 * 60 * 1000
+                                ? 'bg-yellow-900/30 border-yellow-500/50'
+                                : 'bg-green-900/30 border-green-500/50'
+                }`}>
+                    <CardContent className="py-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="text-lg font-semibold">
+                                    {!activeEvent.hunt_started_at ? (
+                                        <span className="text-gray-400">⏸️ Hunt Not Started</span>
+                                    ) : timeRemaining === 0 ? (
+                                        <span className="text-red-400">⏰ Time&apos;s Up!</span>
+                                    ) : (
+                                        <span className="text-green-400">🎮 Hunt LIVE</span>
+                                    )}
+                                </div>
+                                {activeEvent.hunt_started_at && (
+                                    <div className="text-sm text-gray-400">
+                                        Started: {formatDateTime(activeEvent.hunt_started_at)}
+                                    </div>
+                                )}
+                            </div>
+                            {activeEvent.hunt_started_at && timeRemaining !== null && timeRemaining > 0 && (
+                                <div className={`text-3xl font-mono font-bold ${
+                                    timeRemaining < 5 * 60 * 1000 ? 'text-yellow-400 animate-pulse' : 'text-white'
+                                }`}>
+                                    ⏱️ {formatTimeRemaining(timeRemaining)}
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Clue Answer Reference */}
             <Card className="bg-amber-900/20 border-amber-700/50">
@@ -409,6 +549,43 @@ export default function MonitorPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Hall of Shame - Fake QR Scans */}
+            {fakeQRScans.length > 0 && (
+                <Card className="bg-red-950/30 border-red-500/30">
+                    <CardHeader>
+                        <CardTitle className="text-red-400 flex items-center gap-2">
+                            <span>🎭</span> Hall of Shame
+                            <Badge className="bg-red-500/30 text-red-300 ml-2">
+                                {fakeQRScans.length} victims
+                            </Badge>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            {fakeQRScans.map((scan) => (
+                                <div
+                                    key={scan.id}
+                                    className="flex items-center gap-4 p-3 rounded-lg bg-black/50 border border-red-500/20"
+                                >
+                                    <span className="text-2xl">😈</span>
+                                    <div className="flex-1">
+                                        <p className="text-white font-medium">
+                                            {scan.team?.team_name || "Unknown Team"}
+                                        </p>
+                                        <p className="text-red-400 text-sm">
+                                            Fell for: {scan.qr_code?.fake_label || "Unknown Trap"}
+                                        </p>
+                                    </div>
+                                    <div className="text-gray-500 text-sm">
+                                        {formatDateTime(scan.scanned_at)}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

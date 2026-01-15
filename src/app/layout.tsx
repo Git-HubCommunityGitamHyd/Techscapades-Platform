@@ -14,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Techscapades 4.0 | EPOCH 4.0",
+  title: "Techscapades 4.0 Platform",
   description: "A tech-themed treasure hunt experience. Part of EPOCH 4.0 by GitHub Community GITAM",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

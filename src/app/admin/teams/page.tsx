@@ -55,6 +55,12 @@ export default function TeamsPage() {
     const [selectedPlayer, setSelectedPlayer] = useState<TeamMember | null>(null);
     const [targetTeamId, setTargetTeamId] = useState<string>("");
 
+    // Reset password dialog
+    const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+    const [resetPlayer, setResetPlayer] = useState<TeamMember | null>(null);
+    const [newPassword, setNewPassword] = useState("");
+    const [resetting, setResetting] = useState(false);
+
     const fetchTeams = useCallback(async () => {
         if (!selectedEvent) return;
         try {
@@ -235,6 +241,45 @@ export default function TeamsPage() {
         setIsMoveDialogOpen(true);
     };
 
+    const openResetDialog = (player: TeamMember) => {
+        setResetPlayer(player);
+        setNewPassword("");
+        setIsResetDialogOpen(true);
+    };
+
+    const resetPassword = async () => {
+        if (!resetPlayer || !newPassword) return;
+
+        setResetting(true);
+        try {
+            const response = await fetch("/api/admin/players/reset-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ player_id: resetPlayer.id, new_password: newPassword }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                setSuccess(`Password reset for ${resetPlayer.player_name} to: ${newPassword}`);
+                setIsResetDialogOpen(false);
+                setResetPlayer(null);
+                setNewPassword("");
+                setTimeout(() => setSuccess(""), 5000);
+            } else {
+                setError(data.message || "Failed to reset password");
+            }
+        } catch {
+            setError("Failed to reset password");
+        } finally {
+            setResetting(false);
+        }
+    };
+
+    const exportPlayers = () => {
+        window.open(`/api/admin/players/export?event_id=${selectedEvent}`, "_blank");
+    };
+
     // Get teams with room for move dialog
     const teamsWithRoom = teams.filter(t =>
         t.id !== selectedPlayer?.team_id &&
@@ -285,6 +330,15 @@ export default function TeamsPage() {
                         </SelectContent>
                     </Select>
                 </div>
+
+                <Button
+                    variant="outline"
+                    onClick={exportPlayers}
+                    disabled={!selectedEvent || teams.length === 0}
+                    className="border-slate-600 text-gray-300 hover:bg-slate-700"
+                >
+                    📥 Export Players CSV
+                </Button>
 
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
@@ -420,6 +474,14 @@ export default function TeamsPage() {
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
+                                                        onClick={() => openResetDialog(member)}
+                                                        className="text-blue-400 hover:text-blue-300"
+                                                    >
+                                                        🔑 Reset PW
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
                                                         onClick={() => openMoveDialog(member)}
                                                         className="text-gray-400 hover:text-white"
                                                     >
@@ -486,6 +548,46 @@ export default function TeamsPage() {
                                 className="flex-1 bg-white hover:bg-gray-200 text-black"
                             >
                                 Move Player
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Reset Password Dialog */}
+            <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                <DialogContent className="bg-zinc-900 border-white/10">
+                    <DialogHeader>
+                        <DialogTitle className="text-white">🔑 Reset Password</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <p className="text-gray-400">
+                            Reset password for <span className="text-white font-medium">{resetPlayer?.player_name}</span> (@{resetPlayer?.username})
+                        </p>
+                        <div className="space-y-2">
+                            <Label className="text-gray-300">New Password</Label>
+                            <Input
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Enter new password (min 4 chars)"
+                                className="bg-black border-white/10 text-white"
+                            />
+                            <p className="text-xs text-gray-500">Tell this password to the player so they can login again.</p>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setIsResetDialogOpen(false)}
+                                className="flex-1"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={resetPassword}
+                                disabled={!newPassword || newPassword.length < 4 || resetting}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                {resetting ? "Resetting..." : "Reset Password"}
                             </Button>
                         </div>
                     </div>

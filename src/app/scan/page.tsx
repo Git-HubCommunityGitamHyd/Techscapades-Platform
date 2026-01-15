@@ -62,6 +62,20 @@ export default function ScanPage() {
             });
 
             const data = await response.json();
+            
+            // Handle fake QR codes - redirect to the prank URL
+            if (data.isFake && data.redirect_url) {
+                setResult({ success: false, message: data.message });
+                await stopScanner();
+                setIsScanning(false);
+                
+                // Redirect to the prank URL after showing the message
+                setTimeout(() => {
+                    window.location.href = data.redirect_url;
+                }, 1500);
+                return;
+            }
+            
             setResult(data);
 
             if (data.success) {
