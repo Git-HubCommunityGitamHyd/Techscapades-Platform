@@ -43,15 +43,13 @@ export default function AdminLoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-            <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-
-            <Card className="w-full max-w-md relative z-10 bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+        <div className="min-h-screen flex items-center justify-center bg-black p-4">
+            <Card className="w-full max-w-md bg-zinc-950 border-white/10">
                 <CardHeader className="text-center space-y-4">
-                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-slate-600 to-slate-700 rounded-2xl flex items-center justify-center shadow-lg">
+                    <div className="mx-auto w-16 h-16 bg-white rounded-2xl flex items-center justify-center">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className="h-8 w-8 text-white"
+                            className="h-8 w-8 text-black"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -67,7 +65,7 @@ export default function AdminLoginPage() {
                     <CardTitle className="text-2xl font-bold text-white">
                         Admin Dashboard
                     </CardTitle>
-                    <CardDescription className="text-slate-400">
+                    <CardDescription className="text-gray-400">
                         Enter admin credentials to manage events
                     </CardDescription>
                 </CardHeader>
@@ -81,7 +79,7 @@ export default function AdminLoginPage() {
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="username" className="text-slate-300">Username</Label>
+                            <Label htmlFor="username" className="text-gray-300">Username</Label>
                             <Input
                                 id="username"
                                 type="text"
@@ -89,12 +87,12 @@ export default function AdminLoginPage() {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
-                                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-slate-500 focus:ring-slate-500/20"
+                                className="bg-zinc-900 border-white/10 text-white placeholder:text-gray-500 focus:border-white/30"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="password" className="text-slate-300">Password</Label>
+                            <Label htmlFor="password" className="text-gray-300">Password</Label>
                             <Input
                                 id="password"
                                 type="password"
@@ -102,13 +100,13 @@ export default function AdminLoginPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-slate-500 focus:ring-slate-500/20"
+                                className="bg-zinc-900 border-white/10 text-white placeholder:text-gray-500 focus:border-white/30"
                             />
                         </div>
 
                         <Button
                             type="submit"
-                            className="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 transition-all duration-200"
+                            className="w-full bg-white hover:bg-gray-200 text-black font-semibold py-3"
                             disabled={isLoading}
                         >
                             {isLoading ? (
@@ -125,12 +123,18 @@ export default function AdminLoginPage() {
                         </Button>
                     </form>
 
-                    <div className="mt-6 text-center">
+                    <div className="mt-6 flex flex-col items-center gap-2">
                         <a
                             href="/login"
-                            className="text-sm text-slate-500 hover:text-slate-400 transition-colors"
+                            className="text-sm text-gray-500 hover:text-white"
                         >
                             ← Team Login
+                        </a>
+                        <a
+                            href="/"
+                            className="text-sm text-gray-600 hover:text-white"
+                        >
+                            Back to Home
                         </a>
                     </div>
                 </CardContent>

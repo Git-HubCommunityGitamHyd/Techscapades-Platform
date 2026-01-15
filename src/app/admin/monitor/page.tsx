@@ -168,7 +168,7 @@ export default function MonitorPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
             </div>
         );
     }
@@ -183,7 +183,7 @@ export default function MonitorPage() {
                         Live Monitor
                         <span className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
                     </h1>
-                    <p className="text-slate-400 mt-1">Real-time team progress tracking</p>
+                    <p className="text-gray-400 mt-1">Real-time team progress tracking</p>
                 </div>
 
                 {activeEvent?.is_active && (
@@ -195,12 +195,12 @@ export default function MonitorPage() {
 
             {/* Event Selector */}
             <div className="w-64">
-                <Label className="text-slate-300">Select Event</Label>
+                <Label className="text-gray-300">Select Event</Label>
                 <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                    <SelectTrigger className="bg-zinc-900 border-white/10 text-white">
                         <SelectValue placeholder="Select an event" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectContent className="bg-zinc-900 border-white/10">
                         {events.map((event) => (
                             <SelectItem key={event.id} value={event.id} className="text-white hover:bg-slate-700">
                                 {event.name} {event.is_active && "🟢"}
@@ -212,32 +212,32 @@ export default function MonitorPage() {
 
             {/* Live Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-slate-800/50 border-slate-700">
+                <Card className="bg-zinc-900/50 border-white/10">
                     <CardContent className="pt-6 text-center">
                         <div className="text-3xl font-bold text-white">{teams.length}</div>
-                        <p className="text-sm text-slate-400">Teams</p>
+                        <p className="text-sm text-gray-400">Teams</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-slate-800/50 border-slate-700">
+                <Card className="bg-zinc-900/50 border-white/10">
                     <CardContent className="pt-6 text-center">
                         <div className="text-3xl font-bold text-green-400">
                             {teams.filter((t) => t.current_step >= totalClues && totalClues > 0).length}
                         </div>
-                        <p className="text-sm text-slate-400">Finished</p>
+                        <p className="text-sm text-gray-400">Finished</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-slate-800/50 border-slate-700">
+                <Card className="bg-zinc-900/50 border-white/10">
                     <CardContent className="pt-6 text-center">
-                        <div className="text-3xl font-bold text-purple-400">{totalClues}</div>
-                        <p className="text-sm text-slate-400">Total Clues</p>
+                        <div className="text-3xl font-bold text-white">{totalClues}</div>
+                        <p className="text-sm text-gray-400">Total Clues</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-slate-800/50 border-slate-700">
+                <Card className="bg-zinc-900/50 border-white/10">
                     <CardContent className="pt-6 text-center">
                         <div className="text-3xl font-bold text-red-400">
                             {teams.filter((t) => t.is_disqualified).length}
                         </div>
-                        <p className="text-sm text-slate-400">Disqualified</p>
+                        <p className="text-sm text-gray-400">Disqualified</p>
                     </CardContent>
                 </Card>
             </div>
@@ -264,16 +264,16 @@ export default function MonitorPage() {
                                 {clues.map((clue) => (
                                     <div
                                         key={clue.id}
-                                        className="p-3 rounded-lg bg-slate-900/50 border border-amber-700/30"
+                                        className="p-3 rounded-lg bg-black/50 border border-amber-700/30"
                                     >
                                         <div className="flex items-start gap-3">
-                                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 shrink-0">
+                                            <Badge className="bg-white/20 text-white border-white/50 shrink-0">
                                                 Step {clue.step_number}
                                             </Badge>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-slate-300 text-sm">{clue.clue_text}</p>
+                                                <p className="text-gray-300 text-sm">{clue.clue_text}</p>
                                                 {clue.location_name && (
-                                                    <p className="text-xs text-purple-400 mt-1">📍 {clue.location_name}</p>
+                                                    <p className="text-xs text-white mt-1">📍 {clue.location_name}</p>
                                                 )}
                                                 {clue.admin_notes ? (
                                                     <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/30">
@@ -281,7 +281,7 @@ export default function MonitorPage() {
                                                         <p className="text-amber-200 font-medium">{clue.admin_notes}</p>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-xs text-slate-500 mt-2 italic">No answer configured</p>
+                                                    <p className="text-xs text-gray-500 mt-2 italic">No answer configured</p>
                                                 )}
                                             </div>
                                         </div>
@@ -294,18 +294,18 @@ export default function MonitorPage() {
             </Card>
 
             {/* Teams Table */}
-            <Card className="bg-slate-800/50 border-slate-700">
+            <Card className="bg-zinc-900/50 border-white/10">
                 <CardHeader>
                     <CardTitle className="text-white">Team Progress</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {teams.length === 0 ? (
-                        <p className="text-slate-400 text-center py-8">No teams in this event</p>
+                        <p className="text-gray-400 text-center py-8">No teams in this event</p>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="text-slate-400 border-b border-slate-700">
+                                    <tr className="text-gray-400 border-b border-white/10">
                                         <th className="text-left pb-3">#</th>
                                         <th className="text-left pb-3">Team</th>
                                         <th className="text-left pb-3">Score</th>
@@ -319,7 +319,7 @@ export default function MonitorPage() {
                                     {teams.map((team, index) => (
                                         <tr
                                             key={team.id}
-                                            className={`border-b border-slate-800 ${team.is_disqualified ? "opacity-50" : ""
+                                            className={`border-b border-white/10 ${team.is_disqualified ? "opacity-50" : ""
                                                 }`}
                                         >
                                             <td className="py-3">
@@ -327,10 +327,10 @@ export default function MonitorPage() {
                                                     className={`font-bold ${index === 0
                                                         ? "text-yellow-400"
                                                         : index === 1
-                                                            ? "text-slate-300"
+                                                            ? "text-gray-300"
                                                             : index === 2
                                                                 ? "text-orange-400"
-                                                                : "text-slate-500"
+                                                                : "text-gray-500"
                                                         }`}
                                                 >
                                                     {index + 1}
@@ -349,7 +349,7 @@ export default function MonitorPage() {
                                                     >
                                                         -
                                                     </Button>
-                                                    <span className="font-bold text-purple-400 w-8 text-center">{team.score}</span>
+                                                    <span className="font-bold text-white w-8 text-center">{team.score}</span>
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
@@ -364,18 +364,18 @@ export default function MonitorPage() {
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-24 bg-slate-700 rounded-full h-2">
                                                         <div
-                                                            className="bg-purple-500 h-2 rounded-full transition-all"
+                                                            className="bg-white h-2 rounded-full transition-all"
                                                             style={{
                                                                 width: `${totalClues > 0 ? (team.current_step / totalClues) * 100 : 0}%`,
                                                             }}
                                                         />
                                                     </div>
-                                                    <span className="text-slate-400 text-xs">
+                                                    <span className="text-gray-400 text-xs">
                                                         {team.current_step}/{totalClues}
                                                     </span>
                                                 </div>
                                             </td>
-                                            <td className="py-3 text-slate-400 text-xs">
+                                            <td className="py-3 text-gray-400 text-xs">
                                                 {team.lastScan ? formatDateTime(team.lastScan.scanned_at) : "-"}
                                             </td>
                                             <td className="py-3">

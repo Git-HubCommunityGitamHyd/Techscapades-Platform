@@ -97,7 +97,7 @@ export default function QRCodesPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
             </div>
         );
     }
@@ -106,17 +106,17 @@ export default function QRCodesPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-bold text-white">QR Codes</h1>
-                <p className="text-slate-400 mt-1">Generate and download QR codes for clues</p>
+                <p className="text-gray-400 mt-1">Generate and download QR codes for clues</p>
             </div>
 
             {/* Event Selector */}
             <div className="w-64">
-                <Label className="text-slate-300">Select Event</Label>
+                <Label className="text-gray-300">Select Event</Label>
                 <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                    <SelectTrigger className="bg-zinc-900 border-white/10 text-white">
                         <SelectValue placeholder="Select an event" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectContent className="bg-zinc-900 border-white/10">
                         {events.map((event) => (
                             <SelectItem key={event.id} value={event.id} className="text-white hover:bg-slate-700">
                                 {event.name}
@@ -139,12 +139,12 @@ export default function QRCodesPage() {
             )}
 
             {/* Generate QR Codes */}
-            <Card className="bg-slate-800/50 border-slate-700">
+            <Card className="bg-zinc-900/50 border-white/10">
                 <CardHeader>
                     <CardTitle className="text-white">Generate QR Codes</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <p className="text-slate-400">
+                    <p className="text-gray-400">
                         This will generate a QR code for each clue in the selected event. The QR codes will be downloaded as a ZIP file containing PNG images.
                     </p>
 
@@ -152,7 +152,7 @@ export default function QRCodesPage() {
                         <Button
                             onClick={generateQRCodes}
                             disabled={generating || clues.length === 0}
-                            className="bg-purple-600 hover:bg-purple-700"
+                            className="bg-white hover:bg-gray-200 text-black"
                         >
                             {generating ? (
                                 <span className="flex items-center gap-2">
@@ -166,7 +166,7 @@ export default function QRCodesPage() {
                                 "Generate & Download ZIP"
                             )}
                         </Button>
-                        <span className="text-slate-400 text-sm">
+                        <span className="text-gray-400 text-sm">
                             {clues.length} clue{clues.length !== 1 ? "s" : ""} will be included
                         </span>
                     </div>
@@ -174,13 +174,13 @@ export default function QRCodesPage() {
             </Card>
 
             {/* Clues Preview */}
-            <Card className="bg-slate-800/50 border-slate-700">
+            <Card className="bg-zinc-900/50 border-white/10">
                 <CardHeader>
                     <CardTitle className="text-white">Clues to Generate</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {clues.length === 0 ? (
-                        <p className="text-slate-400 text-center py-8">
+                        <p className="text-gray-400 text-center py-8">
                             No clues found for this event. Add clues first before generating QR codes.
                         </p>
                     ) : (
@@ -188,16 +188,16 @@ export default function QRCodesPage() {
                             {clues.map((clue) => (
                                 <div
                                     key={clue.id}
-                                    className="flex items-center gap-4 p-3 rounded-lg bg-slate-900/50"
+                                    className="flex items-center gap-4 p-3 rounded-lg bg-black/50"
                                 >
-                                    <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold">
+                                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold">
                                         {clue.step_number}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-white truncate">{clue.location_name || `Clue ${clue.step_number}`}</p>
-                                        <p className="text-slate-500 text-sm truncate">{clue.clue_text}</p>
+                                        <p className="text-gray-500 text-sm truncate">{clue.clue_text}</p>
                                     </div>
-                                    <svg className="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                                     </svg>
                                 </div>

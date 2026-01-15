@@ -206,7 +206,7 @@ export default function TeamsPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
             </div>
         );
     }
@@ -215,18 +215,18 @@ export default function TeamsPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-bold text-white">Teams</h1>
-                <p className="text-slate-400 mt-1">Manage teams and generate credentials</p>
+                <p className="text-gray-400 mt-1">Manage teams and generate credentials</p>
             </div>
 
             {/* Event Selector */}
             <div className="flex gap-4 items-end">
                 <div className="flex-1">
-                    <Label className="text-slate-300">Select Event</Label>
+                    <Label className="text-gray-300">Select Event</Label>
                     <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                        <SelectTrigger className="bg-zinc-900 border-white/10 text-white">
                             <SelectValue placeholder="Select an event" />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700">
+                        <SelectContent className="bg-zinc-900 border-white/10">
                             {events.map((event) => (
                                 <SelectItem key={event.id} value={event.id} className="text-white hover:bg-slate-700">
                                     {event.name}
@@ -239,27 +239,27 @@ export default function TeamsPage() {
 
             {/* Generate Teams - Only show when no teams exist */}
             {teams.length === 0 && (
-                <Card className="bg-slate-800/50 border-slate-700">
+                <Card className="bg-zinc-900/50 border-white/10">
                     <CardHeader>
                         <CardTitle className="text-white">Generate Teams</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex gap-4 items-end">
                             <div className="w-32">
-                                <Label className="text-slate-300">Number of Teams</Label>
+                                <Label className="text-gray-300">Number of Teams</Label>
                                 <Input
                                     type="number"
                                     min={1}
                                     max={100}
                                     value={teamCount}
                                     onChange={(e) => setTeamCount(parseInt(e.target.value) || 1)}
-                                    className="bg-slate-900 border-slate-700 text-white"
+                                    className="bg-black border-white/10 text-white"
                                 />
                             </div>
                             <Button
                                 onClick={generateTeams}
                                 disabled={generating || !selectedEvent}
-                                className="bg-purple-600 hover:bg-purple-700"
+                                className="bg-white hover:bg-gray-200 text-black"
                             >
                                 {generating ? "Generating..." : "Generate Teams"}
                             </Button>
@@ -293,10 +293,10 @@ export default function TeamsPage() {
                                     </AlertDescription>
                                 </Alert>
 
-                                <div className="max-h-48 overflow-y-auto bg-slate-900 rounded-lg p-4">
+                                <div className="max-h-48 overflow-y-auto bg-black rounded-lg p-4">
                                     <table className="w-full text-sm">
                                         <thead>
-                                            <tr className="text-slate-400 border-b border-slate-700">
+                                            <tr className="text-gray-400 border-b border-white/10">
                                                 <th className="text-left pb-2">Team</th>
                                                 <th className="text-left pb-2">Username</th>
                                                 <th className="text-left pb-2">Password</th>
@@ -304,7 +304,7 @@ export default function TeamsPage() {
                                         </thead>
                                         <tbody>
                                             {credentials.map((cred, i) => (
-                                                <tr key={i} className="text-white border-b border-slate-800">
+                                                <tr key={i} className="text-white border-b border-white/10">
                                                     <td className="py-2">{cred.team_name}</td>
                                                     <td className="py-2 font-mono text-xs">{cred.username}</td>
                                                     <td className="py-2 font-mono text-xs">{cred.password}</td>
@@ -321,7 +321,7 @@ export default function TeamsPage() {
 
             {/* Add Team Card - Show when teams exist and need to download */}
             {teams.length > 0 && success && credentials.length > 0 && (
-                <Card className="bg-slate-800/50 border-slate-700">
+                <Card className="bg-zinc-900/50 border-white/10">
                     <CardContent className="pt-6">
                         <Alert className={mustDownload ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-green-500/10 border-green-500/50 text-green-400"}>
                             <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -343,10 +343,10 @@ export default function TeamsPage() {
                             </AlertDescription>
                         </Alert>
 
-                        <div className="max-h-48 overflow-y-auto bg-slate-900 rounded-lg p-4 mt-4">
+                        <div className="max-h-48 overflow-y-auto bg-black rounded-lg p-4 mt-4">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="text-slate-400 border-b border-slate-700">
+                                    <tr className="text-gray-400 border-b border-white/10">
                                         <th className="text-left pb-2">Team</th>
                                         <th className="text-left pb-2">Username</th>
                                         <th className="text-left pb-2">Password</th>
@@ -354,7 +354,7 @@ export default function TeamsPage() {
                                 </thead>
                                 <tbody>
                                     {credentials.map((cred, i) => (
-                                        <tr key={i} className="text-white border-b border-slate-800">
+                                        <tr key={i} className="text-white border-b border-white/10">
                                             <td className="py-2">{cred.team_name}</td>
                                             <td className="py-2 font-mono text-xs">{cred.username}</td>
                                             <td className="py-2 font-mono text-xs">{cred.password}</td>
@@ -368,14 +368,14 @@ export default function TeamsPage() {
             )}
 
             {/* Teams List */}
-            <Card className="bg-slate-800/50 border-slate-700">
+            <Card className="bg-zinc-900/50 border-white/10">
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-white">Teams ({teams.length})</CardTitle>
                     {teams.length > 0 && (
                         <Button
                             onClick={addSingleTeam}
                             disabled={generating || !selectedEvent}
-                            className="bg-purple-600 hover:bg-purple-700"
+                            className="bg-white hover:bg-gray-200 text-black"
                             size="sm"
                         >
                             {generating ? "Adding..." : "+ Add Team"}
@@ -384,12 +384,12 @@ export default function TeamsPage() {
                 </CardHeader>
                 <CardContent>
                     {teams.length === 0 ? (
-                        <p className="text-slate-400 text-center py-8">No teams yet. Generate some teams above!</p>
+                        <p className="text-gray-400 text-center py-8">No teams yet. Generate some teams above!</p>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="text-slate-400 border-b border-slate-700">
+                                    <tr className="text-gray-400 border-b border-white/10">
                                         <th className="text-left pb-3">Team</th>
                                         <th className="text-left pb-3">Username</th>
                                         <th className="text-left pb-3">Score</th>
@@ -400,9 +400,9 @@ export default function TeamsPage() {
                                 </thead>
                                 <tbody>
                                     {teams.map((team) => (
-                                        <tr key={team.id} className="text-white border-b border-slate-800">
+                                        <tr key={team.id} className="text-white border-b border-white/10">
                                             <td className="py-3">{team.team_name}</td>
-                                            <td className="py-3 font-mono text-xs text-slate-400">{team.username}</td>
+                                            <td className="py-3 font-mono text-xs text-gray-400">{team.username}</td>
                                             <td className="py-3">
                                                 <div className="flex items-center gap-2">
                                                     <Button
@@ -413,7 +413,7 @@ export default function TeamsPage() {
                                                     >
                                                         -
                                                     </Button>
-                                                    <span className="font-bold text-purple-400">{team.score}</span>
+                                                    <span className="font-bold text-white">{team.score}</span>
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"

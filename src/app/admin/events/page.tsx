@@ -216,7 +216,7 @@ export default function EventsPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
             </div>
         );
     }
@@ -226,7 +226,7 @@ export default function EventsPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Events</h1>
-                    <p className="text-slate-400 mt-1">Manage treasure hunt events</p>
+                    <p className="text-gray-400 mt-1">Manage treasure hunt events</p>
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -237,11 +237,11 @@ export default function EventsPage() {
                     }
                 }}>
                     <DialogTrigger asChild>
-                        <Button className="bg-purple-600 hover:bg-purple-700" onClick={openCreateDialog}>
+                        <Button className="bg-white hover:bg-gray-200 text-black" onClick={openCreateDialog}>
                             + New Event
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-slate-900 border-slate-700 max-w-md">
+                    <DialogContent className="bg-black border-white/10 max-w-md">
                         <DialogHeader>
                             <DialogTitle className="text-white">
                                 {editingEvent ? "Edit Event" : "Create New Event"}
@@ -255,33 +255,33 @@ export default function EventsPage() {
                             )}
 
                             <div className="space-y-2">
-                                <Label className="text-slate-300">Event Name</Label>
+                                <Label className="text-gray-300">Event Name</Label>
                                 <Input
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="Campus Treasure Hunt 2024"
-                                    className="bg-slate-800 border-slate-700 text-white"
+                                    placeholder="Techscapades 4.0 2024"
+                                    className="bg-zinc-900 border-white/10 text-white"
                                     required
                                 />
                             </div>
 
                             {/* Start Date/Time */}
                             <div className="space-y-2">
-                                <Label className="text-slate-300">Start Date & Time</Label>
+                                <Label className="text-gray-300">Start Date & Time</Label>
                                 <div className="flex gap-2">
                                     <Input
                                         type="date"
                                         value={formData.start_date}
                                         onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                                         min={!editingEvent ? getTodayDate() : undefined}
-                                        className="bg-slate-800 border-slate-700 text-white flex-1"
+                                        className="bg-zinc-900 border-white/10 text-white flex-1"
                                         required
                                     />
                                     <Select value={formData.start_hour} onValueChange={(v) => setFormData({ ...formData, start_hour: v })}>
-                                        <SelectTrigger className="w-20 bg-slate-800 border-slate-700 text-white">
+                                        <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-slate-800 border-slate-700 max-h-48">
+                                        <SelectContent className="bg-zinc-900 border-white/10 max-h-48">
                                             {hours.map((h) => (
                                                 <SelectItem key={h} value={h} className="text-white">{h}</SelectItem>
                                             ))}
@@ -289,10 +289,10 @@ export default function EventsPage() {
                                     </Select>
                                     <span className="text-white self-center">:</span>
                                     <Select value={formData.start_minute} onValueChange={(v) => setFormData({ ...formData, start_minute: v })}>
-                                        <SelectTrigger className="w-20 bg-slate-800 border-slate-700 text-white">
+                                        <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-slate-800 border-slate-700">
+                                        <SelectContent className="bg-zinc-900 border-white/10">
                                             {minutes.map((m) => (
                                                 <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
                                             ))}
@@ -303,21 +303,21 @@ export default function EventsPage() {
 
                             {/* End Date/Time */}
                             <div className="space-y-2">
-                                <Label className="text-slate-300">End Date & Time</Label>
+                                <Label className="text-gray-300">End Date & Time</Label>
                                 <div className="flex gap-2">
                                     <Input
                                         type="date"
                                         value={formData.end_date}
                                         onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                                         min={formData.start_date || undefined}
-                                        className="bg-slate-800 border-slate-700 text-white flex-1"
+                                        className="bg-zinc-900 border-white/10 text-white flex-1"
                                         required
                                     />
                                     <Select value={formData.end_hour} onValueChange={(v) => setFormData({ ...formData, end_hour: v })}>
-                                        <SelectTrigger className="w-20 bg-slate-800 border-slate-700 text-white">
+                                        <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-slate-800 border-slate-700 max-h-48">
+                                        <SelectContent className="bg-zinc-900 border-white/10 max-h-48">
                                             {hours.map((h) => (
                                                 <SelectItem key={h} value={h} className="text-white">{h}</SelectItem>
                                             ))}
@@ -325,10 +325,10 @@ export default function EventsPage() {
                                     </Select>
                                     <span className="text-white self-center">:</span>
                                     <Select value={formData.end_minute} onValueChange={(v) => setFormData({ ...formData, end_minute: v })}>
-                                        <SelectTrigger className="w-20 bg-slate-800 border-slate-700 text-white">
+                                        <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-slate-800 border-slate-700">
+                                        <SelectContent className="bg-zinc-900 border-white/10">
                                             {minutes.map((m) => (
                                                 <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
                                             ))}
@@ -337,7 +337,7 @@ export default function EventsPage() {
                                 </div>
                             </div>
 
-                            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">
+                            <Button type="submit" className="w-full bg-white hover:bg-gray-200 text-black">
                                 {editingEvent ? "Update Event" : "Create Event"}
                             </Button>
                         </form>
@@ -353,14 +353,14 @@ export default function EventsPage() {
 
             <div className="grid gap-4">
                 {events.length === 0 ? (
-                    <Card className="bg-slate-800/50 border-slate-700">
+                    <Card className="bg-zinc-900/50 border-white/10">
                         <CardContent className="py-12 text-center">
-                            <p className="text-slate-400">No events yet. Create your first event!</p>
+                            <p className="text-gray-400">No events yet. Create your first event!</p>
                         </CardContent>
                     </Card>
                 ) : (
                     events.map((event) => (
-                        <Card key={event.id} className="bg-slate-800/50 border-slate-700">
+                        <Card key={event.id} className="bg-zinc-900/50 border-white/10">
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
                                 <CardTitle className="text-white flex items-center gap-3">
                                     {event.name}
@@ -375,7 +375,7 @@ export default function EventsPage() {
                                         size="sm"
                                         variant="outline"
                                         onClick={() => openEditDialog(event)}
-                                        className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                        className="border-slate-600 text-gray-300 hover:bg-slate-700 hover:text-white"
                                     >
                                         Edit
                                     </Button>
@@ -400,11 +400,11 @@ export default function EventsPage() {
                             <CardContent>
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div>
-                                        <span className="text-slate-400">Start:</span>
+                                        <span className="text-gray-400">Start:</span>
                                         <p className="text-white">{formatDateTime(event.start_time)}</p>
                                     </div>
                                     <div>
-                                        <span className="text-slate-400">End:</span>
+                                        <span className="text-gray-400">End:</span>
                                         <p className="text-white">{formatDateTime(event.end_time)}</p>
                                     </div>
                                 </div>

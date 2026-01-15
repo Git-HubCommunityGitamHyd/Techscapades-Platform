@@ -38,8 +38,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <div className="min-h-screen flex items-center justify-center bg-black">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
             </div>
         );
     }
@@ -47,21 +47,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!admin) return null;
 
     return (
-        <div className="min-h-screen bg-slate-900">
+        <div className="min-h-screen bg-black">
             {/* Mobile Header */}
-            <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur border-b border-slate-800 z-50 flex items-center justify-between px-4">
+            <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-black border-b border-white/10 z-50 flex items-center justify-between px-4">
                 <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    className="text-slate-400"
+                    className="text-gray-400"
                 >
                     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </Button>
                 <h1 className="text-lg font-bold text-white">Admin</h1>
-                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-400">
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-gray-400">
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
@@ -70,12 +70,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Sidebar */}
             <aside
-                className={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-800 z-40 transform transition-transform duration-200 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+                className={`fixed top-0 left-0 h-full w-64 bg-zinc-950 border-r border-white/10 z-40 transform lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                     }`}
             >
-                <div className="p-6 border-b border-slate-800">
-                    <h1 className="text-xl font-bold text-white">Treasure Hunt</h1>
-                    <p className="text-sm text-slate-400 mt-1">Admin Dashboard</p>
+                <div className="p-6 border-b border-white/10">
+                    <h1 className="text-xl font-bold text-white">Techscapades 4.0</h1>
+                    <p className="text-sm text-gray-400 mt-1">Admin Dashboard</p>
                 </div>
 
                 <nav className="p-4 space-y-1">
@@ -84,9 +84,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             key={item.href}
                             href={item.href}
                             onClick={() => setIsSidebarOpen(false)}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname === item.href
-                                ? "bg-purple-500/20 text-purple-400"
-                                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                            className={`flex items-center gap-3 px-4 py-3 rounded-lg ${pathname === item.href
+                                ? "bg-white/10 text-white"
+                                : "text-gray-400 hover:bg-white/5 hover:text-white"
                                 }`}
                         >
                             <span>{item.icon}</span>
@@ -95,11 +95,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     ))}
                 </nav>
 
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-800">
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
                     <Button
                         variant="ghost"
                         onClick={handleLogout}
-                        className="w-full justify-start text-slate-400 hover:text-white hover:bg-slate-800"
+                        className="w-full justify-start text-gray-400 hover:text-white hover:bg-white/5"
                     >
                         <svg className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

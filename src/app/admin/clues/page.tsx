@@ -186,7 +186,7 @@ export default function CluesPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
             </div>
         );
     }
@@ -196,7 +196,7 @@ export default function CluesPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Clues</h1>
-                    <p className="text-slate-400 mt-1">Create and manage treasure hunt clues</p>
+                    <p className="text-gray-400 mt-1">Create and manage treasure hunt clues</p>
                 </div>
 
                 <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -207,11 +207,11 @@ export default function CluesPage() {
                     }
                 }}>
                     <DialogTrigger asChild>
-                        <Button className="bg-purple-600 hover:bg-purple-700" disabled={!selectedEvent}>
+                        <Button className="bg-white hover:bg-gray-200 text-black" disabled={!selectedEvent}>
                             + Add Clue
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-slate-900 border-slate-700">
+                    <DialogContent className="bg-black border-white/10">
                         <DialogHeader>
                             <DialogTitle className="text-white">
                                 {editingClue ? "Edit Clue" : "Add New Clue"}
@@ -225,28 +225,28 @@ export default function CluesPage() {
                             )}
 
                             <div className="space-y-2">
-                                <Label className="text-slate-300">Clue Text *</Label>
+                                <Label className="text-gray-300">Clue Text *</Label>
                                 <Textarea
                                     value={formData.clue_text}
                                     onChange={(e) => setFormData({ ...formData, clue_text: e.target.value })}
                                     placeholder="Enter riddle or clue here..."
-                                    className="bg-slate-800 border-slate-700 text-white min-h-[120px]"
+                                    className="bg-zinc-900 border-white/10 text-white min-h-[120px]"
                                     required
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-slate-300">Location Name (optional hint)</Label>
+                                <Label className="text-gray-300">Location Name (optional hint)</Label>
                                 <Input
                                     value={formData.location_name}
                                     onChange={(e) => setFormData({ ...formData, location_name: e.target.value })}
                                     placeholder="e.g., Library, Cafeteria"
-                                    className="bg-slate-800 border-slate-700 text-white"
+                                    className="bg-zinc-900 border-white/10 text-white"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-slate-300">Admin Notes (answer/hints - only visible to admins)</Label>
+                                <Label className="text-gray-300">Admin Notes (answer/hints - only visible to admins)</Label>
                                 <Textarea
                                     value={formData.admin_notes}
                                     onChange={(e) => setFormData({ ...formData, admin_notes: e.target.value })}
@@ -255,7 +255,7 @@ export default function CluesPage() {
                                 />
                             </div>
 
-                            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">
+                            <Button type="submit" className="w-full bg-white hover:bg-gray-200 text-black">
                                 {editingClue ? "Update Clue" : "Add Clue"}
                             </Button>
                         </form>
@@ -265,12 +265,12 @@ export default function CluesPage() {
 
             {/* Event Selector */}
             <div className="w-64">
-                <Label className="text-slate-300">Select Event</Label>
+                <Label className="text-gray-300">Select Event</Label>
                 <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                    <SelectTrigger className="bg-zinc-900 border-white/10 text-white">
                         <SelectValue placeholder="Select an event" />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectContent className="bg-zinc-900 border-white/10">
                         {events.map((event) => (
                             <SelectItem key={event.id} value={event.id} className="text-white hover:bg-slate-700">
                                 {event.name}
@@ -287,19 +287,19 @@ export default function CluesPage() {
             )}
 
             {/* Clues List */}
-            <Card className="bg-slate-800/50 border-slate-700">
+            <Card className="bg-zinc-900/50 border-white/10">
                 <CardHeader>
                     <CardTitle className="text-white">Clues ({clues.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {clues.length === 0 ? (
-                        <p className="text-slate-400 text-center py-8">No clues yet. Add your first clue!</p>
+                        <p className="text-gray-400 text-center py-8">No clues yet. Add your first clue!</p>
                     ) : (
                         <div className="space-y-3">
                             {clues.map((clue, index) => (
                                 <div
                                     key={clue.id}
-                                    className="flex items-start gap-4 p-4 rounded-lg bg-slate-900/50 border border-slate-700"
+                                    className="flex items-start gap-4 p-4 rounded-lg bg-black/50 border border-white/10"
                                 >
                                     <div className="flex flex-col gap-1">
                                         <Button
@@ -307,7 +307,7 @@ export default function CluesPage() {
                                             variant="ghost"
                                             onClick={() => moveClue(index, "up")}
                                             disabled={index === 0}
-                                            className="h-6 w-6 p-0 text-slate-400 hover:text-white"
+                                            className="h-6 w-6 p-0 text-gray-400 hover:text-white"
                                         >
                                             ↑
                                         </Button>
@@ -316,20 +316,20 @@ export default function CluesPage() {
                                             variant="ghost"
                                             onClick={() => moveClue(index, "down")}
                                             disabled={index === clues.length - 1}
-                                            className="h-6 w-6 p-0 text-slate-400 hover:text-white"
+                                            className="h-6 w-6 p-0 text-gray-400 hover:text-white"
                                         >
                                             ↓
                                         </Button>
                                     </div>
 
-                                    <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/50 h-8 w-8 flex items-center justify-center">
+                                    <Badge className="bg-white/20 text-white border-white/50 h-8 w-8 flex items-center justify-center">
                                         {clue.step_number}
                                     </Badge>
 
                                     <div className="flex-1 min-w-0">
                                         <p className="text-white whitespace-pre-wrap">{clue.clue_text}</p>
                                         {clue.location_name && (
-                                            <p className="text-sm text-purple-400 mt-2">📍 {clue.location_name}</p>
+                                            <p className="text-sm text-white mt-2">📍 {clue.location_name}</p>
                                         )}
                                         {clue.admin_notes && (
                                             <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/30">
@@ -344,7 +344,7 @@ export default function CluesPage() {
                                             size="sm"
                                             variant="ghost"
                                             onClick={() => openEditDialog(clue)}
-                                            className="text-slate-400 hover:text-white"
+                                            className="text-gray-400 hover:text-white"
                                         >
                                             Edit
                                         </Button>

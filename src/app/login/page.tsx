@@ -30,7 +30,6 @@ export default function LoginPage() {
             const data = await response.json();
 
             if (data.success) {
-                // Store team info in localStorage
                 localStorage.setItem("team", JSON.stringify(data.team));
                 router.push("/hunt");
             } else {
@@ -44,15 +43,13 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
-            <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-
-            <Card className="w-full max-w-md relative z-10 bg-slate-900/80 backdrop-blur-xl border-purple-500/20">
+        <div className="min-h-screen flex items-center justify-center bg-black p-4">
+            <Card className="w-full max-w-md bg-zinc-950 border-white/10">
                 <CardHeader className="text-center space-y-4">
-                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/25">
+                    <div className="mx-auto w-16 h-16 bg-white rounded-2xl flex items-center justify-center">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className="h-8 w-8 text-white"
+                            className="h-8 w-8 text-black"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -65,10 +62,10 @@ export default function LoginPage() {
                             />
                         </svg>
                     </div>
-                    <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        Campus Treasure Hunt
+                    <CardTitle className="text-2xl font-bold text-white">
+                        Techscapades 4.0
                     </CardTitle>
-                    <CardDescription className="text-slate-400">
+                    <CardDescription className="text-gray-400">
                         Enter your team credentials to begin the adventure
                     </CardDescription>
                 </CardHeader>
@@ -82,7 +79,7 @@ export default function LoginPage() {
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="username" className="text-slate-300">Team Username</Label>
+                            <Label htmlFor="username" className="text-gray-300">Team Username</Label>
                             <Input
                                 id="username"
                                 type="text"
@@ -90,12 +87,12 @@ export default function LoginPage() {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
-                                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-purple-500 focus:ring-purple-500/20"
+                                className="bg-zinc-900 border-white/10 text-white placeholder:text-gray-500 focus:border-white/30"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="password" className="text-slate-300">Password</Label>
+                            <Label htmlFor="password" className="text-gray-300">Password</Label>
                             <Input
                                 id="password"
                                 type="password"
@@ -103,13 +100,13 @@ export default function LoginPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-purple-500 focus:ring-purple-500/20"
+                                className="bg-zinc-900 border-white/10 text-white placeholder:text-gray-500 focus:border-white/30"
                             />
                         </div>
 
                         <Button
                             type="submit"
-                            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 transition-all duration-200 shadow-lg shadow-purple-500/25"
+                            className="w-full bg-white hover:bg-gray-200 text-black font-semibold py-3"
                             disabled={isLoading}
                         >
                             {isLoading ? (
@@ -126,12 +123,18 @@ export default function LoginPage() {
                         </Button>
                     </form>
 
-                    <div className="mt-6 text-center">
+                    <div className="mt-6 flex flex-col items-center gap-2">
                         <a
                             href="/admin-login"
-                            className="text-sm text-slate-500 hover:text-purple-400 transition-colors"
+                            className="text-sm text-gray-500 hover:text-white"
                         >
                             Admin Login →
+                        </a>
+                        <a
+                            href="/"
+                            className="text-sm text-gray-600 hover:text-white"
+                        >
+                            Back to Home
                         </a>
                     </div>
                 </CardContent>

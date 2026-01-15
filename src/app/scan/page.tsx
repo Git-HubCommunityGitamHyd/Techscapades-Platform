@@ -46,7 +46,6 @@ export default function ScanPage() {
         setIsProcessing(true);
 
         try {
-            // Extract token from URL or use direct token
             let token = decodedText;
             if (decodedText.includes("token=")) {
                 const url = new URL(decodedText);
@@ -63,7 +62,6 @@ export default function ScanPage() {
             setResult(data);
 
             if (data.success) {
-                // Update local team data
                 const updatedTeam = { ...team, score: data.newScore, current_step: data.nextStep };
                 localStorage.setItem("team", JSON.stringify(updatedTeam));
                 setTeam(updatedTeam);
@@ -71,7 +69,6 @@ export default function ScanPage() {
                 await stopScanner();
                 setIsScanning(false);
 
-                // Auto navigate back after success
                 setTimeout(() => {
                     router.push("/hunt");
                 }, 2000);
@@ -116,16 +113,14 @@ export default function ScanPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
-            <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-
-            <div className="relative z-10 max-w-lg mx-auto space-y-6">
+        <div className="min-h-screen bg-black p-4">
+            <div className="max-w-lg mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <Button
                         variant="ghost"
                         onClick={() => router.push("/hunt")}
-                        className="text-slate-400 hover:text-white"
+                        className="text-gray-400 hover:text-white"
                     >
                         ← Back
                     </Button>
@@ -163,7 +158,7 @@ export default function ScanPage() {
                 )}
 
                 {/* Scanner */}
-                <Card className="bg-slate-900/80 backdrop-blur-xl border-purple-500/20 overflow-hidden">
+                <Card className="bg-zinc-950 border-white/10 overflow-hidden">
                     <CardContent className="p-0">
                         <div
                             id="qr-reader"
@@ -177,7 +172,7 @@ export default function ScanPage() {
                 {!isScanning ? (
                     <Button
                         onClick={startScanner}
-                        className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                        className="w-full h-14 text-lg bg-white hover:bg-gray-200 text-black font-semibold"
                     >
                         <svg className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -192,14 +187,14 @@ export default function ScanPage() {
                             setIsScanning(false);
                         }}
                         variant="outline"
-                        className="w-full h-14 text-lg border-slate-600 text-slate-300 hover:bg-slate-800"
+                        className="w-full h-14 text-lg border-white/20 text-gray-300 hover:bg-white/10"
                     >
                         Stop Scanning
                     </Button>
                 )}
 
                 {/* Instructions */}
-                <div className="text-center text-sm text-slate-400">
+                <div className="text-center text-sm text-gray-400">
                     <p>Point your camera at the QR code at your current location.</p>
                     <p className="mt-1">Make sure you&apos;re scanning in the correct order!</p>
                 </div>
