@@ -54,15 +54,22 @@ export default function Home() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-          <Link href="/login">
+          <Link href="/register">
             <button className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-gray-200 text-black font-semibold rounded-xl text-lg">
-              Join Hunt →
+              Register Now →
             </button>
           </Link>
-          <Link href="/admin-login">
+          <Link href="/login">
             <button className="w-full sm:w-auto px-8 py-4 bg-transparent hover:bg-white/10 text-white font-semibold rounded-xl border border-white/30 text-lg">
-              Admin Login
+              Already Registered? Login
             </button>
+          </Link>
+        </div>
+
+        {/* Admin Link */}
+        <div className="pt-2">
+          <Link href="/admin-login" className="text-sm text-gray-500 hover:text-white">
+            Admin Login →
           </Link>
         </div>
       </div>

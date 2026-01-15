@@ -7,18 +7,38 @@ export interface Event {
   end_time: string;
   is_active: boolean;
   created_at: string;
+  // New fields
+  hunt_started_at?: string | null;
+  hunt_duration_minutes?: number;
+  hint_delay_minutes?: number;
+  default_min_players?: number;
+  default_max_players?: number;
 }
 
 export interface Team {
   id: string;
   event_id: string;
   team_name: string;
-  username: string;
-  password_hash: string;
+  username: string | null; // Now optional - players register with individual accounts
+  password_hash: string | null; // Now optional
   score: number;
   is_disqualified: boolean;
   current_step: number;
   is_admin: boolean;
+  created_at: string;
+  // New fields
+  min_players?: number;
+  max_players?: number;
+  registration_status?: 'open' | 'full' | 'closed';
+  hunt_finished_at?: string | null;
+}
+
+export interface TeamMember {
+  id: string;
+  team_id: string;
+  player_name: string;
+  username: string;
+  password_hash: string;
   created_at: string;
 }
 
@@ -30,6 +50,8 @@ export interface Clue {
   location_name: string | null;
   admin_notes: string | null;
   created_at: string;
+  // New field
+  hint_text?: string | null;
 }
 
 export interface QRCode {
@@ -38,6 +60,10 @@ export interface QRCode {
   clue_id: string;
   qr_token: string;
   created_at: string;
+  // New fields for fake QRs
+  is_fake?: boolean;
+  redirect_url?: string | null;
+  fake_label?: string | null;
 }
 
 export interface TeamClueOrder {
@@ -45,6 +71,11 @@ export interface TeamClueOrder {
   team_id: string;
   clue_id: string;
   step_index: number;
+  // New fields for hint tracking
+  clue_started_at?: string | null;
+  hint_viewed?: boolean;
+  hint_viewed_at?: string | null;
+  hint_viewed_by?: string | null;
 }
 
 export interface Scan {
@@ -52,6 +83,17 @@ export interface Scan {
   team_id: string;
   clue_id: string;
   qr_code_id: string;
+  scanned_at: string;
+  // New fields
+  scanned_by?: string | null; // team_member id
+  hint_was_used?: boolean;
+}
+
+export interface FakeQRScan {
+  id: string;
+  qr_code_id: string;
+  team_id: string;
+  player_id: string;
   scanned_at: string;
 }
 

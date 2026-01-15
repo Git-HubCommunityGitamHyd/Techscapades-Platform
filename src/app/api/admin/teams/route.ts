@@ -32,6 +32,64 @@ export async function GET(request: NextRequest) {
     }
 }
 
+// POST - Create a new team (manual creation with just name + player limits)
+export async function POST(request: NextRequest) {
+    try {
+        const body = await request.json();
+        const { event_id, team_name, min_players = 2, max_players = 2 } = body;
+
+        if (!event_id || !team_name) {
+            return NextResponse.json(
+                { success: false, message: "Event ID and team name are required" },
+                { status: 400 }
+            );
+        }
+
+        const supabase = createAdminClient();
+
+        // Check if team name already exists for this event
+        const { data: existing } = await supabase
+            .from("teams")
+            .select("id")
+            .eq("event_id", event_id)
+            .eq("team_name", team_name)
+            .single();
+
+        if (existing) {
+            return NextResponse.json(
+                { success: false, message: "A team with this name already exists for this event" },
+                { status: 400 }
+            );
+        }
+
+        // Create team (no username/password - players will register themselves)
+        const { data, error } = await supabase
+            .from("teams")
+            .insert({
+                event_id,
+                team_name,
+                min_players,
+                max_players,
+                username: null, // No longer needed - players have individual accounts
+                password_hash: null,
+                is_admin: false,
+                score: 0,
+                current_step: 0,
+            })
+            .select()
+            .single();
+
+        if (error) {
+            return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, data });
+    } catch (error) {
+        console.error("Team create error:", error);
+        return NextResponse.json({ success: false, message: "Failed to create team" }, { status: 500 });
+    }
+}
+
 // PUT - Update team (score, disqualify, etc.)
 export async function PUT(request: NextRequest) {
     try {
@@ -56,5 +114,34 @@ export async function PUT(request: NextRequest) {
     } catch (error) {
         console.error("Team update error:", error);
         return NextResponse.json({ success: false, message: "Failed to update team" }, { status: 500 });
+    }
+}
+
+// DELETE - Delete a team
+export async function DELETE(request: NextRequest) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get("id");
+
+        if (!id) {
+            return NextResponse.json({ success: false, message: "Team ID required" }, { status: 400 });
+        }
+
+        const supabase = createAdminClient();
+
+        // Delete team (cascade will handle team_members deletion)
+        const { error } = await supabase
+            .from("teams")
+            .delete()
+            .eq("id", id);
+
+        if (error) {
+            return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("Team delete error:", error);
+        return NextResponse.json({ success: false, message: "Failed to delete team" }, { status: 500 });
     }
 }

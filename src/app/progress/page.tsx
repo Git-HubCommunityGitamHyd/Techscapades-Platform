@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,10 +9,11 @@ import { Progress } from "@/components/ui/progress";
 import type { Team, Scan, Clue, Event } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { formatDateTime, getTimeRemaining } from "@/lib/utils/helpers";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ProgressPage() {
-    const router = useRouter();
-    const [team, setTeam] = useState<Team | null>(null);
+    const { team, player, isLoading: authLoading } = useAuth();
+    const [localTeam, setLocalTeam] = useState<Team | null>(null);
     const [scans, setScans] = useState<(Scan & { clue?: Clue })[]>([]);
     const [event, setEvent] = useState<Event | null>(null);
     const [totalClues, setTotalClues] = useState(0);
@@ -56,15 +56,15 @@ export default function ProgressPage() {
     }, []);
 
     useEffect(() => {
-        const storedTeam = localStorage.getItem("team");
-        if (!storedTeam) {
-            router.push("/login");
+        if (authLoading) return;
+
+        if (!team) {
+            setIsLoading(false);
             return;
         }
 
-        const teamData = JSON.parse(storedTeam) as Team;
-        setTeam(teamData);
-        fetchData(teamData);
+        setLocalTeam(team);
+        fetchData(team);
         setIsLoading(false);
 
         const supabase = createClient();
@@ -76,10 +76,10 @@ export default function ProgressPage() {
                     event: "*",
                     schema: "public",
                     table: "scans",
-                    filter: `team_id=eq.${teamData.id}`,
+                    filter: `team_id=eq.${team.id}`,
                 },
                 () => {
-                    fetchData(teamData);
+                    fetchData(team);
                 }
             )
             .subscribe();
@@ -87,7 +87,7 @@ export default function ProgressPage() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [router, fetchData]);
+    }, [authLoading, team, fetchData]);
 
     useEffect(() => {
         if (!event) return;
@@ -99,7 +99,7 @@ export default function ProgressPage() {
         return () => clearInterval(interval);
     }, [event]);
 
-    if (isLoading) {
+    if (isLoading || authLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-black">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
@@ -107,9 +107,9 @@ export default function ProgressPage() {
         );
     }
 
-    if (!team) return null;
+    if (!localTeam) return null;
 
-    const progressPercent = totalClues > 0 ? (team.current_step / totalClues) * 100 : 0;
+    const progressPercent = totalClues > 0 ? (localTeam.current_step / totalClues) * 100 : 0;
 
     return (
         <div className="min-h-screen bg-black p-4">
@@ -162,9 +162,16 @@ export default function ProgressPage() {
                 <Card className="bg-zinc-950 border-white/10">
                     <CardHeader>
                         <CardTitle className="text-white flex items-center justify-between">
-                            <span>{team.team_name}</span>
+                            <div>
+                                <span>{localTeam.team_name}</span>
+                                {player?.player_name && (
+                                    <span className="text-gray-400 text-sm font-normal ml-2">
+                                        ({player.player_name})
+                                    </span>
+                                )}
+                            </div>
                             <Badge className="bg-white/10 text-white border-white/30">
-                                {team.score} pts
+                                {localTeam.score} pts
                             </Badge>
                         </CardTitle>
                     </CardHeader>
@@ -173,7 +180,7 @@ export default function ProgressPage() {
                             <div className="flex justify-between text-sm mb-2">
                                 <span className="text-gray-400">Progress</span>
                                 <span className="text-white font-medium">
-                                    {team.current_step} / {totalClues} clues
+                                    {localTeam.current_step} / {totalClues} clues
                                 </span>
                             </div>
                             <Progress value={progressPercent} className="h-3" />

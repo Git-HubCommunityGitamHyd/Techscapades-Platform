@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Team, Clue } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function HuntPage() {
-    const router = useRouter();
-    const [team, setTeam] = useState<Team | null>(null);
+    const { team, player, isLoading: authLoading, logout } = useAuth();
+    const [localTeam, setLocalTeam] = useState<Team | null>(null);
     const [currentClue, setCurrentClue] = useState<Clue | null>(null);
     const [totalClues, setTotalClues] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
@@ -49,15 +49,15 @@ export default function HuntPage() {
     }, []);
 
     useEffect(() => {
-        const storedTeam = localStorage.getItem("team");
-        if (!storedTeam) {
-            router.push("/login");
+        if (authLoading) return;
+
+        if (!team) {
+            setIsLoading(false);
             return;
         }
 
-        const teamData = JSON.parse(storedTeam) as Team;
-        setTeam(teamData);
-        fetchCurrentClue(teamData);
+        setLocalTeam(team);
+        fetchCurrentClue(team);
         setIsLoading(false);
 
         const supabase = createClient();
@@ -69,11 +69,11 @@ export default function HuntPage() {
                     event: "UPDATE",
                     schema: "public",
                     table: "teams",
-                    filter: `id=eq.${teamData.id}`,
+                    filter: `id=eq.${team.id}`,
                 },
                 (payload) => {
                     const updatedTeam = payload.new as Team;
-                    setTeam(updatedTeam);
+                    setLocalTeam(updatedTeam);
                     localStorage.setItem("team", JSON.stringify(updatedTeam));
                     fetchCurrentClue(updatedTeam);
                 }
@@ -83,11 +83,10 @@ export default function HuntPage() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [router, fetchCurrentClue]);
+    }, [authLoading, team, fetchCurrentClue]);
 
     const handleLogout = () => {
-        localStorage.removeItem("team");
-        router.push("/login");
+        logout();
     };
 
     if (isLoading) {
@@ -98,10 +97,10 @@ export default function HuntPage() {
         );
     }
 
-    if (!team) return null;
+    if (!localTeam) return null;
 
-    const isHuntComplete = team.current_step >= totalClues;
-    const isDisqualified = team.is_disqualified;
+    const isHuntComplete = localTeam.current_step >= totalClues;
+    const isDisqualified = localTeam.is_disqualified;
 
     return (
         <div className="min-h-screen bg-black p-4">
@@ -109,8 +108,12 @@ export default function HuntPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-xl font-bold text-white">{team.team_name}</h1>
-                        <p className="text-sm text-gray-400">Score: {team.score} points</p>
+                        <h1 className="text-xl font-bold text-white">{localTeam.team_name}</h1>
+                        <p className="text-sm text-gray-400">
+                            {player?.player_name && <span className="text-gray-300">{player.player_name}</span>}
+                            {player?.player_name && " • "}
+                            Score: {localTeam.score} points
+                        </p>
                     </div>
                     <Button variant="ghost" onClick={handleLogout} className="text-gray-400 hover:text-white">
                         Logout
@@ -120,7 +123,7 @@ export default function HuntPage() {
                 {/* Progress Badge */}
                 <div className="flex gap-2">
                     <Badge variant="outline" className="border-white/30 text-gray-300">
-                        Step {team.current_step + 1} of {totalClues || "?"}
+                        Step {localTeam.current_step + 1} of {totalClues || "?"}
                     </Badge>
                     {isDisqualified && (
                         <Badge variant="destructive">Disqualified</Badge>
@@ -149,7 +152,7 @@ export default function HuntPage() {
                             <div className="text-6xl mb-4">🏆</div>
                             <h2 className="text-xl font-bold text-white mb-2">Congratulations!</h2>
                             <p className="text-gray-400 mb-4">
-                                You&apos;ve completed the treasure hunt with a score of {team.score} points!
+                                You&apos;ve completed the treasure hunt with a score of {localTeam.score} points!
                             </p>
                             <Link href="/progress">
                                 <Button className="bg-white hover:bg-gray-200 text-black">
@@ -164,7 +167,7 @@ export default function HuntPage() {
                             <CardHeader>
                                 <div className="flex items-center gap-2">
                                     <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                                        <span className="text-white font-bold">{team.current_step + 1}</span>
+                                        <span className="text-white font-bold">{localTeam.current_step + 1}</span>
                                     </div>
                                     <CardTitle className="text-lg text-white">Current Clue</CardTitle>
                                 </div>

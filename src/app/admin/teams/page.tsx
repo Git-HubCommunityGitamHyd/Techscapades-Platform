@@ -14,19 +14,46 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import type { Event, Team, GeneratedTeamCredential } from "@/lib/types";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import type { Event, Team } from "@/lib/types";
+
+interface TeamMember {
+    id: string;
+    team_id: string;
+    player_name: string;
+    username: string;
+    created_at: string;
+}
+
+interface TeamWithMembers extends Team {
+    members?: TeamMember[];
+}
 
 export default function TeamsPage() {
     const [events, setEvents] = useState<Event[]>([]);
-    const [teams, setTeams] = useState<Team[]>([]);
+    const [teams, setTeams] = useState<TeamWithMembers[]>([]);
     const [selectedEvent, setSelectedEvent] = useState<string>("");
     const [isLoading, setIsLoading] = useState(true);
-    const [generating, setGenerating] = useState(false);
-    const [teamCount, setTeamCount] = useState(10);
-    const [credentials, setCredentials] = useState<GeneratedTeamCredential[]>([]);
-    const [mustDownload, setMustDownload] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+
+    // Create team form
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [newTeamName, setNewTeamName] = useState("");
+    const [minPlayers, setMinPlayers] = useState(2);
+    const [maxPlayers, setMaxPlayers] = useState(2);
+    const [creating, setCreating] = useState(false);
+
+    // Move player dialog
+    const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+    const [selectedPlayer, setSelectedPlayer] = useState<TeamMember | null>(null);
+    const [targetTeamId, setTargetTeamId] = useState<string>("");
 
     const fetchTeams = useCallback(async () => {
         if (!selectedEvent) return;
@@ -34,7 +61,18 @@ export default function TeamsPage() {
             const response = await fetch(`/api/admin/teams?event_id=${selectedEvent}`);
             const data = await response.json();
             if (data.success) {
-                setTeams(data.data || []);
+                // Fetch members for each team
+                const teamsWithMembers = await Promise.all(
+                    (data.data || []).map(async (team: Team) => {
+                        const membersRes = await fetch(`/api/admin/players?team_id=${team.id}`);
+                        const membersData = await membersRes.json();
+                        return {
+                            ...team,
+                            members: membersData.success ? membersData.data : []
+                        };
+                    })
+                );
+                setTeams(teamsWithMembers);
             }
         } catch (err) {
             console.error("Fetch teams error:", err);
@@ -65,69 +103,100 @@ export default function TeamsPage() {
         setIsLoading(false);
     };
 
-    const generateTeams = async () => {
-        setGenerating(true);
+    const createTeam = async () => {
+        if (!newTeamName.trim()) {
+            setError("Team name is required");
+            return;
+        }
+
+        setCreating(true);
         setError("");
-        setCredentials([]);
 
         try {
-            const response = await fetch("/api/admin/teams/generate", {
+            const response = await fetch("/api/admin/teams", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ event_id: selectedEvent, count: teamCount }),
+                body: JSON.stringify({
+                    event_id: selectedEvent,
+                    team_name: newTeamName.trim(),
+                    min_players: minPlayers,
+                    max_players: maxPlayers,
+                }),
             });
 
             const data = await response.json();
 
             if (data.success) {
-                setSuccess(data.message);
-                setCredentials(data.credentials);
-                setMustDownload(true);
+                setSuccess(`Team "${newTeamName}" created successfully!`);
+                setNewTeamName("");
+                setMinPlayers(2);
+                setMaxPlayers(2);
+                setIsCreateDialogOpen(false);
                 fetchTeams();
+                setTimeout(() => setSuccess(""), 3000);
             } else {
-                setError(data.message);
+                setError(data.message || "Failed to create team");
             }
         } catch {
-            setError("Failed to generate teams");
+            setError("Failed to create team");
         } finally {
-            setGenerating(false);
+            setCreating(false);
         }
     };
 
-    // Warn user before leaving if they haven't downloaded credentials
-    useEffect(() => {
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            if (mustDownload) {
-                e.preventDefault();
-                e.returnValue = "You have undownloaded team credentials. Are you sure you want to leave?";
-                return e.returnValue;
+    const deleteTeam = async (teamId: string, teamName: string) => {
+        if (!confirm(`Are you sure you want to delete "${teamName}"? This will also remove all players in this team.`)) return;
+
+        try {
+            await fetch(`/api/admin/teams?id=${teamId}`, { method: "DELETE" });
+            fetchTeams();
+            setSuccess(`"${teamName}" deleted successfully`);
+            setTimeout(() => setSuccess(""), 3000);
+        } catch (err) {
+            console.error("Delete error:", err);
+            setError("Failed to delete team");
+        }
+    };
+
+    const removePlayer = async (player: TeamMember) => {
+        if (!confirm(`Remove ${player.player_name} (@${player.username}) from this team? They will need to register again.`)) return;
+
+        try {
+            await fetch(`/api/admin/players/${player.id}`, { method: "DELETE" });
+            fetchTeams();
+            setSuccess(`${player.player_name} removed successfully`);
+            setTimeout(() => setSuccess(""), 3000);
+        } catch (err) {
+            console.error("Remove player error:", err);
+            setError("Failed to remove player");
+        }
+    };
+
+    const movePlayer = async () => {
+        if (!selectedPlayer || !targetTeamId) return;
+
+        try {
+            const response = await fetch(`/api/admin/players/${selectedPlayer.id}/move`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ new_team_id: targetTeamId }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                setSuccess(`${selectedPlayer.player_name} moved successfully!`);
+                setIsMoveDialogOpen(false);
+                setSelectedPlayer(null);
+                setTargetTeamId("");
+                fetchTeams();
+                setTimeout(() => setSuccess(""), 3000);
+            } else {
+                setError(data.message || "Failed to move player");
             }
-        };
-
-        window.addEventListener("beforeunload", handleBeforeUnload);
-        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-    }, [mustDownload]);
-
-    const downloadCSV = () => {
-        const csv = [
-            "Team Name,Username,Password",
-            ...credentials.map((c) => `${c.team_name},${c.username},${c.password}`),
-        ].join("\n");
-
-        const blob = new Blob([csv], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `team_credentials_${new Date().toISOString().split("T")[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-
-        // Clear credentials after download and remove blocking
-        setMustDownload(false);
-        setTimeout(() => {
-            setCredentials([]);
-            setSuccess("");
-        }, 3000);
+        } catch {
+            setError("Failed to move player");
+        }
     };
 
     const toggleDisqualify = async (team: Team) => {
@@ -160,48 +229,17 @@ export default function TeamsPage() {
         }
     };
 
-    const addSingleTeam = async () => {
-        setGenerating(true);
-        setError("");
-        setCredentials([]);
-
-        try {
-            const response = await fetch("/api/admin/teams/generate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ event_id: selectedEvent, count: 1 }),
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                setSuccess(data.message);
-                setCredentials(data.credentials);
-                setMustDownload(true);
-                fetchTeams();
-            } else {
-                setError(data.message);
-            }
-        } catch {
-            setError("Failed to add team");
-        } finally {
-            setGenerating(false);
-        }
+    const openMoveDialog = (player: TeamMember) => {
+        setSelectedPlayer(player);
+        setTargetTeamId("");
+        setIsMoveDialogOpen(true);
     };
 
-    const deleteTeam = async (teamId: string, teamName: string) => {
-        if (!confirm(`Are you sure you want to delete ${teamName}? This action cannot be undone.`)) return;
-
-        try {
-            await fetch(`/api/admin/teams?id=${teamId}`, { method: "DELETE" });
-            fetchTeams();
-            setSuccess(`${teamName} deleted successfully`);
-            setTimeout(() => setSuccess(""), 3000);
-        } catch (err) {
-            console.error("Delete error:", err);
-            setError("Failed to delete team");
-        }
-    };
+    // Get teams with room for move dialog
+    const teamsWithRoom = teams.filter(t =>
+        t.id !== selectedPlayer?.team_id &&
+        (t.members?.length || 0) < (t.max_players || 2)
+    );
 
     if (isLoading) {
         return (
@@ -215,10 +253,22 @@ export default function TeamsPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-bold text-white">Teams</h1>
-                <p className="text-gray-400 mt-1">Manage teams and generate credentials</p>
+                <p className="text-gray-400 mt-1">Create teams and manage players</p>
             </div>
 
-            {/* Event Selector */}
+            {/* Alerts */}
+            {error && (
+                <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+            {success && (
+                <Alert className="bg-green-500/10 border-green-500/50 text-green-400">
+                    <AlertDescription>{success}</AlertDescription>
+                </Alert>
+            )}
+
+            {/* Event Selector + Create Team Button */}
             <div className="flex gap-4 items-end">
                 <div className="flex-1">
                     <Label className="text-gray-300">Select Event</Label>
@@ -228,237 +278,219 @@ export default function TeamsPage() {
                         </SelectTrigger>
                         <SelectContent className="bg-zinc-900 border-white/10">
                             {events.map((event) => (
-                                <SelectItem key={event.id} value={event.id} className="text-white hover:bg-slate-700">
+                                <SelectItem key={event.id} value={event.id} className="text-white hover:bg-white/10">
                                     {event.name}
                                 </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
-            </div>
 
-            {/* Generate Teams - Only show when no teams exist */}
-            {teams.length === 0 && (
-                <Card className="bg-zinc-900/50 border-white/10">
-                    <CardHeader>
-                        <CardTitle className="text-white">Generate Teams</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex gap-4 items-end">
-                            <div className="w-32">
-                                <Label className="text-gray-300">Number of Teams</Label>
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="bg-white hover:bg-gray-200 text-black" disabled={!selectedEvent}>
+                            + Create Team
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-zinc-900 border-white/10">
+                        <DialogHeader>
+                            <DialogTitle className="text-white">Create New Team</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 pt-4">
+                            <div className="space-y-2">
+                                <Label className="text-gray-300">Team Name</Label>
                                 <Input
-                                    type="number"
-                                    min={1}
-                                    max={100}
-                                    value={teamCount}
-                                    onChange={(e) => setTeamCount(parseInt(e.target.value) || 1)}
+                                    value={newTeamName}
+                                    onChange={(e) => setNewTeamName(e.target.value)}
+                                    placeholder="Enter team name from Google Forms"
                                     className="bg-black border-white/10 text-white"
                                 />
                             </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-gray-300">Min Players</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={10}
+                                        value={minPlayers}
+                                        onChange={(e) => setMinPlayers(parseInt(e.target.value) || 1)}
+                                        className="bg-black border-white/10 text-white"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-gray-300">Max Players</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={10}
+                                        value={maxPlayers}
+                                        onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 2)}
+                                        className="bg-black border-white/10 text-white"
+                                    />
+                                </div>
+                            </div>
                             <Button
-                                onClick={generateTeams}
-                                disabled={generating || !selectedEvent}
-                                className="bg-white hover:bg-gray-200 text-black"
+                                onClick={createTeam}
+                                disabled={creating || !newTeamName.trim()}
+                                className="w-full bg-white hover:bg-gray-200 text-black"
                             >
-                                {generating ? "Generating..." : "Generate Teams"}
+                                {creating ? "Creating..." : "Create Team"}
                             </Button>
                         </div>
+                    </DialogContent>
+                </Dialog>
+            </div>
 
-                        {error && (
-                            <Alert variant="destructive" className="mt-4">
-                                <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                        )}
-
-                        {success && credentials.length > 0 && (
-                            <div className="mt-4 space-y-4">
-                                <Alert className={mustDownload ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-green-500/10 border-green-500/50 text-green-400"}>
-                                    <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                        <div>
-                                            <span className="font-semibold">{success}</span>
-                                            {mustDownload && (
-                                                <p className="text-sm mt-1 text-amber-200">
-                                                    ⚠️ You must download the CSV before leaving. Passwords won&apos;t be shown again!
-                                                </p>
-                                            )}
+            {/* Teams List */}
+            <div className="space-y-4">
+                {teams.length === 0 ? (
+                    <Card className="bg-zinc-900/50 border-white/10">
+                        <CardContent className="py-12 text-center">
+                            <p className="text-gray-400">No teams yet. Create teams from your Google Forms registrations!</p>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    teams.map((team) => (
+                        <Card key={team.id} className="bg-zinc-900/50 border-white/10">
+                            <CardHeader className="pb-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <CardTitle className="text-white text-lg">{team.team_name}</CardTitle>
+                                        <Badge className="bg-white/10 text-gray-300 border-white/20">
+                                            {team.members?.length || 0}/{team.max_players || 2} players
+                                        </Badge>
+                                        {team.is_disqualified && (
+                                            <Badge variant="destructive">Disqualified</Badge>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {/* Score */}
+                                        <div className="flex items-center gap-1 mr-4">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => adjustScore(team.id, -10)}
+                                                className="h-6 w-6 p-0 text-red-400"
+                                            >
+                                                -
+                                            </Button>
+                                            <span className="font-bold text-white w-8 text-center">{team.score}</span>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => adjustScore(team.id, 10)}
+                                                className="h-6 w-6 p-0 text-green-400"
+                                            >
+                                                +
+                                            </Button>
                                         </div>
                                         <Button
                                             size="sm"
-                                            onClick={downloadCSV}
-                                            className={mustDownload ? "bg-amber-600 hover:bg-amber-700 animate-pulse" : "bg-green-600 hover:bg-green-700"}
+                                            variant={team.is_disqualified ? "default" : "destructive"}
+                                            onClick={() => toggleDisqualify(team)}
                                         >
-                                            {mustDownload ? "⬇️ Download CSV (Required)" : "✓ Downloaded"}
+                                            {team.is_disqualified ? "Reinstate" : "Disqualify"}
                                         </Button>
-                                    </AlertDescription>
-                                </Alert>
-
-                                <div className="max-h-48 overflow-y-auto bg-black rounded-lg p-4">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="text-gray-400 border-b border-white/10">
-                                                <th className="text-left pb-2">Team</th>
-                                                <th className="text-left pb-2">Username</th>
-                                                <th className="text-left pb-2">Password</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {credentials.map((cred, i) => (
-                                                <tr key={i} className="text-white border-b border-white/10">
-                                                    <td className="py-2">{cred.team_name}</td>
-                                                    <td className="py-2 font-mono text-xs">{cred.username}</td>
-                                                    <td className="py-2 font-mono text-xs">{cred.password}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => deleteTeam(team.id, team.team_name)}
+                                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                        >
+                                            Delete
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Add Team Card - Show when teams exist and need to download */}
-            {teams.length > 0 && success && credentials.length > 0 && (
-                <Card className="bg-zinc-900/50 border-white/10">
-                    <CardContent className="pt-6">
-                        <Alert className={mustDownload ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-green-500/10 border-green-500/50 text-green-400"}>
-                            <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                <div>
-                                    <span className="font-semibold">{success}</span>
-                                    {mustDownload && (
-                                        <p className="text-sm mt-1 text-amber-200">
-                                            ⚠️ You must download the CSV before leaving. Passwords won&apos;t be shown again!
-                                        </p>
-                                    )}
-                                </div>
-                                <Button
-                                    size="sm"
-                                    onClick={downloadCSV}
-                                    className={mustDownload ? "bg-amber-600 hover:bg-amber-700 animate-pulse" : "bg-green-600 hover:bg-green-700"}
-                                >
-                                    {mustDownload ? "⬇️ Download CSV (Required)" : "✓ Downloaded"}
-                                </Button>
-                            </AlertDescription>
-                        </Alert>
-
-                        <div className="max-h-48 overflow-y-auto bg-black rounded-lg p-4 mt-4">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="text-gray-400 border-b border-white/10">
-                                        <th className="text-left pb-2">Team</th>
-                                        <th className="text-left pb-2">Username</th>
-                                        <th className="text-left pb-2">Password</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {credentials.map((cred, i) => (
-                                        <tr key={i} className="text-white border-b border-white/10">
-                                            <td className="py-2">{cred.team_name}</td>
-                                            <td className="py-2 font-mono text-xs">{cred.username}</td>
-                                            <td className="py-2 font-mono text-xs">{cred.password}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Teams List */}
-            <Card className="bg-zinc-900/50 border-white/10">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-white">Teams ({teams.length})</CardTitle>
-                    {teams.length > 0 && (
-                        <Button
-                            onClick={addSingleTeam}
-                            disabled={generating || !selectedEvent}
-                            className="bg-white hover:bg-gray-200 text-black"
-                            size="sm"
-                        >
-                            {generating ? "Adding..." : "+ Add Team"}
-                        </Button>
-                    )}
-                </CardHeader>
-                <CardContent>
-                    {teams.length === 0 ? (
-                        <p className="text-gray-400 text-center py-8">No teams yet. Generate some teams above!</p>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="text-gray-400 border-b border-white/10">
-                                        <th className="text-left pb-3">Team</th>
-                                        <th className="text-left pb-3">Username</th>
-                                        <th className="text-left pb-3">Score</th>
-                                        <th className="text-left pb-3">Step</th>
-                                        <th className="text-left pb-3">Status</th>
-                                        <th className="text-right pb-3">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {teams.map((team) => (
-                                        <tr key={team.id} className="text-white border-b border-white/10">
-                                            <td className="py-3">{team.team_name}</td>
-                                            <td className="py-3 font-mono text-xs text-gray-400">{team.username}</td>
-                                            <td className="py-3">
-                                                <div className="flex items-center gap-2">
+                            </CardHeader>
+                            <CardContent>
+                                {/* Players List */}
+                                {team.members && team.members.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {team.members.map((member) => (
+                                            <div
+                                                key={member.id}
+                                                className="flex items-center justify-between p-3 bg-black/50 rounded-lg"
+                                            >
+                                                <div>
+                                                    <span className="text-white">{member.player_name}</span>
+                                                    <span className="text-gray-500 text-sm ml-2">@{member.username}</span>
+                                                </div>
+                                                <div className="flex gap-2">
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        onClick={() => adjustScore(team.id, -10)}
-                                                        className="h-6 w-6 p-0 text-red-400"
+                                                        onClick={() => openMoveDialog(member)}
+                                                        className="text-gray-400 hover:text-white"
                                                     >
-                                                        -
+                                                        Move
                                                     </Button>
-                                                    <span className="font-bold text-white">{team.score}</span>
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        onClick={() => adjustScore(team.id, 10)}
-                                                        className="h-6 w-6 p-0 text-green-400"
+                                                        onClick={() => removePlayer(member)}
+                                                        className="text-red-400 hover:text-red-300"
                                                     >
-                                                        +
+                                                        Remove
                                                     </Button>
                                                 </div>
-                                            </td>
-                                            <td className="py-3">{team.current_step}</td>
-                                            <td className="py-3">
-                                                {team.is_disqualified ? (
-                                                    <Badge variant="destructive">Disqualified</Badge>
-                                                ) : (
-                                                    <Badge className="bg-green-500/20 text-green-400 border-green-500/50">Active</Badge>
-                                                )}
-                                            </td>
-                                            <td className="py-3 text-right">
-                                                <div className="flex gap-2 justify-end">
-                                                    <Button
-                                                        size="sm"
-                                                        variant={team.is_disqualified ? "default" : "destructive"}
-                                                        onClick={() => toggleDisqualify(team)}
-                                                    >
-                                                        {team.is_disqualified ? "Reinstate" : "Disqualify"}
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() => deleteTeam(team.id, team.team_name)}
-                                                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                                                    >
-                                                        Delete
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 text-sm">No players registered yet</p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ))
+                )}
+            </div>
+
+            {/* Move Player Dialog */}
+            <Dialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
+                <DialogContent className="bg-zinc-900 border-white/10">
+                    <DialogHeader>
+                        <DialogTitle className="text-white">Move Player</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <p className="text-gray-400">
+                            Move <span className="text-white font-medium">{selectedPlayer?.player_name}</span> to a different team:
+                        </p>
+                        <Select value={targetTeamId} onValueChange={setTargetTeamId}>
+                            <SelectTrigger className="bg-black border-white/10 text-white">
+                                <SelectValue placeholder="Select target team" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-zinc-900 border-white/10">
+                                {teamsWithRoom.length > 0 ? (
+                                    teamsWithRoom.map((team) => (
+                                        <SelectItem key={team.id} value={team.id} className="text-white hover:bg-white/10">
+                                            {team.team_name} ({team.members?.length || 0}/{team.max_players || 2})
+                                        </SelectItem>
+                                    ))
+                                ) : (
+                                    <div className="p-2 text-gray-500 text-sm">No teams with available slots</div>
+                                )}
+                            </SelectContent>
+                        </Select>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setIsMoveDialogOpen(false)}
+                                className="flex-1"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={movePlayer}
+                                disabled={!targetTeamId}
+                                className="flex-1 bg-white hover:bg-gray-200 text-black"
+                            >
+                                Move Player
+                            </Button>
                         </div>
-                    )}
-                </CardContent>
-            </Card>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

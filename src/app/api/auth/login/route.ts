@@ -15,15 +15,14 @@ export async function POST(request: NextRequest) {
 
         const supabase = createAdminClient();
 
-        // Find team by username
-        const { data: team, error } = await supabase
-            .from("teams")
+        // Find player by username in team_members table
+        const { data: player, error: playerError } = await supabase
+            .from("team_members")
             .select("*")
-            .eq("username", username)
-            .eq("is_admin", false)
+            .eq("username", username.toLowerCase())
             .single();
 
-        if (error || !team) {
+        if (playerError || !player) {
             return NextResponse.json(
                 { success: false, message: "Invalid username or password" },
                 { status: 401 }
@@ -31,11 +30,25 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify password
-        const isValid = await verifyPassword(password, team.password_hash);
+        const isValid = await verifyPassword(password, player.password_hash);
         if (!isValid) {
             return NextResponse.json(
                 { success: false, message: "Invalid username or password" },
                 { status: 401 }
+            );
+        }
+
+        // Get team info
+        const { data: team, error: teamError } = await supabase
+            .from("teams")
+            .select("*")
+            .eq("id", player.team_id)
+            .single();
+
+        if (teamError || !team) {
+            return NextResponse.json(
+                { success: false, message: "Team not found" },
+                { status: 404 }
             );
         }
 
@@ -68,12 +81,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Return team data (without password hash)
-        const { password_hash: _, ...safeTeam } = team;
+        // Return player and team data (without password hashes)
+        const { password_hash: _playerPw, ...safePlayer } = player;
+        const { password_hash: _teamPw, ...safeTeam } = team;
 
         return NextResponse.json({
             success: true,
             message: "Login successful",
+            player: safePlayer,
             team: safeTeam,
         });
     } catch (error) {

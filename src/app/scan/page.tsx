@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Team } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ScanPage() {
     const router = useRouter();
-    const [team, setTeam] = useState<Team | null>(null);
+    const { team, isLoading: authLoading } = useAuth();
+    const [localTeam, setLocalTeam] = useState<Team | null>(null);
     const [isScanning, setIsScanning] = useState(false);
     const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -29,20 +31,21 @@ export default function ScanPage() {
     }, []);
 
     useEffect(() => {
-        const storedTeam = localStorage.getItem("team");
-        if (!storedTeam) {
+        if (authLoading) return;
+
+        if (!team) {
             router.push("/login");
             return;
         }
-        setTeam(JSON.parse(storedTeam) as Team);
+        setLocalTeam(team);
 
         return () => {
             stopScanner();
         };
-    }, [router, stopScanner]);
+    }, [authLoading, team, router, stopScanner]);
 
     const processQRCode = async (decodedText: string) => {
-        if (isProcessing || !team) return;
+        if (isProcessing || !localTeam) return;
         setIsProcessing(true);
 
         try {
@@ -55,16 +58,16 @@ export default function ScanPage() {
             const response = await fetch("/api/scan", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token, team_id: team.id }),
+                body: JSON.stringify({ token, team_id: localTeam.id }),
             });
 
             const data = await response.json();
             setResult(data);
 
             if (data.success) {
-                const updatedTeam = { ...team, score: data.newScore, current_step: data.nextStep };
+                const updatedTeam = { ...localTeam, score: data.newScore, current_step: data.nextStep };
                 localStorage.setItem("team", JSON.stringify(updatedTeam));
-                setTeam(updatedTeam);
+                setLocalTeam(updatedTeam);
 
                 await stopScanner();
                 setIsScanning(false);
