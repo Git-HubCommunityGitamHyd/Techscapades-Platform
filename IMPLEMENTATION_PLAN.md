@@ -80,6 +80,126 @@ This document outlines the changes and new features to be implemented in the Tec
 
 ---
 
+### 1.1 Authentication Flow (Detailed)
+
+#### Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         ADMIN SIDE                              │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Admin creates teams (from Google Forms data)                │
+│     - Team Name: "The Coders"                                   │
+│     - Min Players: 2                                            │
+│     - Max Players: 2                                            │
+│     (No passwords here - just team names)                       │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                     PLAYER REGISTRATION                         │
+│                     New route: /register                        │
+├─────────────────────────────────────────────────────────────────┤
+│  Player visits /register and fills:                             │
+│  ┌─────────────────────────────────────────┐                    │
+│  │ Select Team:     [ The Coders    ▾ ]    │                    │
+│  │ Your Name:       [ Harsha           ]    │                    │
+│  │ Username:        [ harsha_dev       ]    │                    │
+│  │ Password:        [ ••••••••         ]    │                    │
+│  │ Confirm Password:[ ••••••••         ]    │                    │
+│  │                                          │                    │
+│  │         [ Register & Join Team ]         │                    │
+│  └─────────────────────────────────────────┘                    │
+│                                                                  │
+│  • Validates team has room (members < max_players)               │
+│  • Creates entry in team_members table                           │
+│  • Each player has their own username/password                   │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                       PLAYER LOGIN                              │
+│                      Route: /login                              │
+├─────────────────────────────────────────────────────────────────┤
+│  Player visits /login:                                          │
+│  ┌─────────────────────────────────────────┐                    │
+│  │ Username:        [ harsha_dev       ]    │                    │
+│  │ Password:        [ ••••••••         ]    │                    │
+│  │                                          │                    │
+│  │             [ Start Hunt ]               │                    │
+│  └─────────────────────────────────────────┘                    │
+│                                                                  │
+│  • No team selection needed (username is unique)                 │
+│  • Returns both player info AND team info                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Registration Page (`/register`)
+- [ ] Create new route `/register`
+- [ ] Form fields:
+  - Event dropdown (if multiple events)
+  - Team dropdown (filtered by event, shows only teams with room)
+  - Player Name
+  - Username (must be unique)
+  - Password
+  - Confirm Password
+- [ ] Validation:
+  - Team has room (current members < max_players)
+  - Username is unique globally
+  - Password matches confirm
+- [ ] On successful registration:
+  - Insert into `team_members` table
+  - Redirect to `/login` with success message
+
+#### Login Page (`/login`)
+- [ ] Update to query `team_members` table instead of `teams`
+- [ ] Return combined data:
+  ```javascript
+  {
+    player: { id, player_name, username },
+    team: { id, team_name, score, current_step, ... }
+  }
+  ```
+- [ ] Store both in localStorage for session
+
+#### API Endpoints
+- [ ] `POST /api/auth/register` - Player registration
+- [ ] `POST /api/auth/login` - Player login (updated)
+- [ ] `GET /api/teams/available` - Get teams with room for event
+
+---
+
+### 1.2 Admin Player Management
+
+**Context:** Admins need to manage players (view who registered, move between teams if wrong selection)
+
+#### Admin Teams Page Updates
+- [ ] Show registered players under each team:
+  ```
+  Team: The Coders (2/2 players)
+  ├── Harsha (@harsha_dev)      [Move] [Remove]
+  └── Ravi (@ravi123)           [Move] [Remove]
+  ```
+- [ ] "Move Player" functionality:
+  - Select player
+  - Choose new team from dropdown
+  - Validate new team has room
+  - Update `team_members.team_id`
+- [ ] "Remove Player" functionality:
+  - Delete from `team_members`
+  - Player must re-register
+
+#### API Endpoints
+- [ ] `GET /api/admin/players?event_id=xxx` - Get all players for event
+- [ ] `PUT /api/admin/players/:id/move` - Move player to different team
+- [ ] `DELETE /api/admin/players/:id` - Remove player from team
+
+#### Database Considerations
+- Moving a player mid-game:
+  - What happens to their hint progress? (Reset or keep?)
+  - What happens to scans they made? (Keep for now)
+  - Recommended: Only allow moves before hunt starts
+
+---
+
 ### 2. Timed Hint System
 
 **Context:** Teams first see only the riddle. After a configurable time, a "Show Hint" button appears.
