@@ -26,8 +26,7 @@ import { formatDateTime } from "@/lib/utils/helpers";
 
 // Generate all 24 hours (00-23)
 const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-// Generate all minutes (00-59) with common intervals first
-const commonMinutes = ["00", "15", "30", "45"];
+// Generate all minutes (00-59)
 const allMinutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
 // Get today's date in YYYY-MM-DD format for min attribute
@@ -55,10 +54,6 @@ export default function EventsPage() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
-    useEffect(() => {
-        fetchEvents();
-    }, []);
-
     const fetchEvents = async () => {
         try {
             const response = await fetch("/api/admin/events");
@@ -71,6 +66,10 @@ export default function EventsPage() {
         }
         setIsLoading(false);
     };
+
+    useEffect(() => {
+        fetchEvents();
+    }, []);
 
     const parseDateTimeToForm = (dateStr: string) => {
         const date = new Date(dateStr);

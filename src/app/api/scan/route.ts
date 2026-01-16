@@ -215,10 +215,10 @@ export async function POST(request: NextRequest) {
             .eq("event_id", team.event_id);
 
         const isComplete = newStep >= (totalClues || 0);
-        
+
         // Build message with points info
-        let message = isComplete 
-            ? "🎉 Congratulations! You've completed the hunt!" 
+        const message = isComplete
+            ? "🎉 Congratulations! You've completed the hunt!"
             : `Correct! +${pointsEarned} points${hintUsed ? " (hint used)" : ""}. Move on to the next clue.`;
 
         return NextResponse.json({

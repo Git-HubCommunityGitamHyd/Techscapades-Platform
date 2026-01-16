@@ -45,6 +45,7 @@ export default function QRCodesPage() {
             fetchClues();
             fetchFakeQRs();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedEvent]);
 
     const fetchEvents = async () => {
@@ -299,7 +300,7 @@ export default function QRCodesPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <p className="text-gray-400 text-sm">
-                        Create fake QR codes that redirect players to any URL (rickrolls, memes, etc.). 
+                        Create fake QR codes that redirect players to any URL (rickrolls, memes, etc.).
                         Players who scan these will be added to the &quot;Hall of Shame&quot;!
                     </p>
 

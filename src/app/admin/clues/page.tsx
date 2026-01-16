@@ -53,16 +53,6 @@ export default function CluesPage() {
         }
     }, [selectedEvent]);
 
-    useEffect(() => {
-        fetchEvents();
-    }, []);
-
-    useEffect(() => {
-        if (selectedEvent) {
-            fetchClues();
-        }
-    }, [selectedEvent, fetchClues]);
-
     const fetchEvents = async () => {
         try {
             const response = await fetch("/api/admin/events");
@@ -76,6 +66,16 @@ export default function CluesPage() {
         }
         setIsLoading(false);
     };
+
+    useEffect(() => {
+        fetchEvents();
+    }, []);
+
+    useEffect(() => {
+        if (selectedEvent) {
+            fetchClues();
+        }
+    }, [selectedEvent, fetchClues]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

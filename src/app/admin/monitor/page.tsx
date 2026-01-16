@@ -105,6 +105,21 @@ export default function MonitorPage() {
         setFakeQRScans(filteredScans);
     }, [selectedEvent]);
 
+    const fetchEvents = async () => {
+        const supabase = createClient();
+        const { data } = await supabase.from("events").select("*").order("created_at", { ascending: false });
+        setEvents(data || []);
+
+        // Select active event by default
+        const activeEvent = data?.find((e) => e.is_active);
+        if (activeEvent) {
+            setSelectedEvent(activeEvent.id);
+        } else if (data && data.length > 0) {
+            setSelectedEvent(data[0].id);
+        }
+        setIsLoading(false);
+    };
+
     useEffect(() => {
         fetchEvents();
     }, []);
@@ -193,7 +208,7 @@ export default function MonitorPage() {
     // Timer effect - updates every second when hunt is active
     useEffect(() => {
         const activeEvent = events.find((e) => e.id === selectedEvent);
-        
+
         if (!activeEvent?.hunt_started_at) {
             setTimeRemaining(null);
             return;
@@ -214,21 +229,6 @@ export default function MonitorPage() {
 
         return () => clearInterval(interval);
     }, [events, selectedEvent]);
-
-    const fetchEvents = async () => {
-        const supabase = createClient();
-        const { data } = await supabase.from("events").select("*").order("created_at", { ascending: false });
-        setEvents(data || []);
-
-        // Select active event by default
-        const activeEvent = data?.find((e) => e.is_active);
-        if (activeEvent) {
-            setSelectedEvent(activeEvent.id);
-        } else if (data && data.length > 0) {
-            setSelectedEvent(data[0].id);
-        }
-        setIsLoading(false);
-    };
 
     const toggleDisqualify = async (team: Team) => {
         const supabase = createClient();
@@ -343,15 +343,14 @@ export default function MonitorPage() {
 
             {/* Hunt Timer Status */}
             {activeEvent && (
-                <Card className={`border ${
-                    !activeEvent.hunt_started_at 
-                        ? 'bg-gray-900/50 border-gray-700' 
-                        : timeRemaining === 0 
-                            ? 'bg-red-900/30 border-red-500/50' 
-                            : timeRemaining && timeRemaining < 5 * 60 * 1000
-                                ? 'bg-yellow-900/30 border-yellow-500/50'
-                                : 'bg-green-900/30 border-green-500/50'
-                }`}>
+                <Card className={`border ${!activeEvent.hunt_started_at
+                    ? 'bg-gray-900/50 border-gray-700'
+                    : timeRemaining === 0
+                        ? 'bg-red-900/30 border-red-500/50'
+                        : timeRemaining && timeRemaining < 5 * 60 * 1000
+                            ? 'bg-yellow-900/30 border-yellow-500/50'
+                            : 'bg-green-900/30 border-green-500/50'
+                    }`}>
                     <CardContent className="py-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -371,9 +370,8 @@ export default function MonitorPage() {
                                 )}
                             </div>
                             {activeEvent.hunt_started_at && timeRemaining !== null && timeRemaining > 0 && (
-                                <div className={`text-3xl font-mono font-bold ${
-                                    timeRemaining < 5 * 60 * 1000 ? 'text-yellow-400 animate-pulse' : 'text-white'
-                                }`}>
+                                <div className={`text-3xl font-mono font-bold ${timeRemaining < 5 * 60 * 1000 ? 'text-yellow-400 animate-pulse' : 'text-white'
+                                    }`}>
                                     ⏱️ {formatTimeRemaining(timeRemaining)}
                                 </div>
                             )}

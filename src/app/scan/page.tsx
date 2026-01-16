@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Team } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +16,8 @@ export default function ScanPage() {
     const [isScanning, setIsScanning] = useState(false);
     const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [manualCode, setManualCode] = useState("");
+    const [showManualInput, setShowManualInput] = useState(false);
     const scannerRef = useRef<HTMLDivElement>(null);
     const html5QrCodeRef = useRef<unknown>(null);
 
@@ -62,20 +65,20 @@ export default function ScanPage() {
             });
 
             const data = await response.json();
-            
+
             // Handle fake QR codes - redirect to the prank URL
             if (data.isFake && data.redirect_url) {
                 setResult({ success: false, message: data.message });
                 await stopScanner();
                 setIsScanning(false);
-                
+
                 // Redirect to the prank URL after showing the message
                 setTimeout(() => {
                     window.location.href = data.redirect_url;
                 }, 1500);
                 return;
             }
-            
+
             setResult(data);
 
             if (data.success) {
@@ -214,6 +217,43 @@ export default function ScanPage() {
                 <div className="text-center text-sm text-gray-400">
                     <p>Point your camera at the QR code at your current location.</p>
                     <p className="mt-1">Make sure you&apos;re scanning in the correct order!</p>
+                </div>
+
+                {/* Manual Input for Desktop Testing */}
+                <div className="border-t border-white/10 pt-4 mt-4">
+                    <Button
+                        variant="ghost"
+                        onClick={() => setShowManualInput(!showManualInput)}
+                        className="w-full text-gray-500 text-sm"
+                    >
+                        {showManualInput ? "Hide" : "Can't use camera?"} Manual Input
+                    </Button>
+
+                    {showManualInput && (
+                        <div className="mt-3 space-y-2">
+                            <Input
+                                value={manualCode}
+                                onChange={(e) => setManualCode(e.target.value)}
+                                placeholder="Enter QR code text (e.g., CLUE_abc123...)"
+                                className="bg-zinc-900 border-white/10 text-white"
+                            />
+                            <Button
+                                onClick={() => {
+                                    if (manualCode.trim()) {
+                                        processQRCode(manualCode.trim());
+                                        setManualCode("");
+                                    }
+                                }}
+                                disabled={!manualCode.trim() || isProcessing}
+                                className="w-full bg-zinc-800 hover:bg-zinc-700 text-white"
+                            >
+                                Submit Code
+                            </Button>
+                            <p className="text-xs text-gray-600 text-center">
+                                For testing only. Enter the token from the QR code.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

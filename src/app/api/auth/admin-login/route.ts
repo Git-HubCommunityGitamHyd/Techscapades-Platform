@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Return admin data (without password hash)
-        const { password_hash: _, ...safeAdmin } = admin;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { password_hash: _password, ...safeAdmin } = admin;
 
         return NextResponse.json({
             success: true,

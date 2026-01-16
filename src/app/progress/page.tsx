@@ -55,6 +55,7 @@ export default function ProgressPage() {
         }
     }, []);
 
+    // Auth state hydration
     useEffect(() => {
         if (authLoading) return;
 

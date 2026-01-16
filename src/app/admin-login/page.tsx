@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -124,18 +125,18 @@ export default function AdminLoginPage() {
                     </form>
 
                     <div className="mt-6 flex flex-col items-center gap-2">
-                        <a
+                        <Link
                             href="/login"
                             className="text-sm text-gray-500 hover:text-white"
                         >
                             ← Team Login
-                        </a>
-                        <a
+                        </Link>
+                        <Link
                             href="/"
                             className="text-sm text-gray-600 hover:text-white"
                         >
                             Back to Home
-                        </a>
+                        </Link>
                     </div>
                 </CardContent>
             </Card>

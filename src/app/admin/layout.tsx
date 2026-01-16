@@ -21,6 +21,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [isLoading, setIsLoading] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+    // Hydrate admin from localStorage on mount
     useEffect(() => {
         const storedAdmin = localStorage.getItem("admin");
         if (!storedAdmin) {

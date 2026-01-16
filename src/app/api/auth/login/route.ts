@@ -82,7 +82,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Return player and team data (without password hashes)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password_hash: _playerPw, ...safePlayer } = player;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password_hash: _teamPw, ...safeTeam } = team;
 
         return NextResponse.json({

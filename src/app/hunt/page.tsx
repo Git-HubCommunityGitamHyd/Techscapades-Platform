@@ -19,7 +19,7 @@ export default function HuntPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [event, setEvent] = useState<Event | null>(null);
     const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-    
+
     // Hint system state
     const [hintTimeRemaining, setHintTimeRemaining] = useState<number | null>(null);
     const [showHint, setShowHint] = useState(false);
@@ -34,7 +34,7 @@ export default function HuntPage() {
                 .select("*")
                 .eq("id", eventId)
                 .single();
-            
+
             if (data) {
                 setEvent(data);
             }
@@ -63,7 +63,7 @@ export default function HuntPage() {
 
             if (clueOrder) {
                 setCurrentClueOrder(clueOrder);
-                
+
                 // Mark clue as started if not already
                 if (!clueOrder.clue_started_at) {
                     await supabase
@@ -85,7 +85,7 @@ export default function HuntPage() {
                     .single();
 
                 setCurrentClue(clue || null);
-                
+
                 // If hint was viewed, show it
                 if (clueOrder.hint_viewed && clue?.hint_text) {
                     setHintText(clue.hint_text);
@@ -104,13 +104,31 @@ export default function HuntPage() {
             return;
         }
 
-        setLocalTeam(team);
+        // Fetch fresh team data from database (in case localStorage is stale)
+        const fetchFreshTeamData = async () => {
+            const supabase = createClient();
+            const { data: freshTeam } = await supabase
+                .from("teams")
+                .select("*")
+                .eq("id", team.id)
+                .single();
+
+            if (freshTeam) {
+                setLocalTeam(freshTeam);
+                localStorage.setItem("team", JSON.stringify(freshTeam));
+                fetchCurrentClue(freshTeam);
+            } else {
+                setLocalTeam(team);
+                fetchCurrentClue(team);
+            }
+            setIsLoading(false);
+        };
+
         fetchEvent(team.event_id);
-        fetchCurrentClue(team);
-        setIsLoading(false);
+        fetchFreshTeamData();
 
         const supabase = createClient();
-        
+
         // Subscribe to team updates
         const teamChannel = supabase
             .channel("team-updates")
@@ -204,7 +222,7 @@ export default function HuntPage() {
     // View hint handler
     const viewHint = async () => {
         if (!localTeam || !currentClue) return;
-        
+
         setHintLoading(true);
         try {
             const response = await fetch("/api/hints/view", {
@@ -218,7 +236,7 @@ export default function HuntPage() {
             });
 
             const data = await response.json();
-            
+
             if (data.success) {
                 setShowHint(true);
                 setHintText(data.hint_text || currentClue.hint_text || "No hint available");
@@ -280,27 +298,20 @@ export default function HuntPage() {
 
                 {/* Global Timer - Only show when hunt is active */}
                 {isHuntStarted && !isHuntTimedOut && timeRemaining !== null && (
-                    <div className={`text-center py-3 px-4 rounded-lg ${
-                        timeRemaining < 5 * 60 * 1000 
-                            ? 'bg-red-500/20 border border-red-500/50' 
-                            : 'bg-white/5 border border-white/10'
-                    }`}>
-                        <p className="text-xs text-gray-400 mb-1">⏱️ Time Remaining</p>
-                        <p className={`text-2xl font-mono font-bold ${
-                            timeRemaining < 5 * 60 * 1000 ? 'text-red-400 animate-pulse' : 'text-white'
+                    <div className={`text-center py-3 px-4 rounded-lg ${timeRemaining < 5 * 60 * 1000
+                        ? 'bg-red-500/20 border border-red-500/50'
+                        : 'bg-white/5 border border-white/10'
                         }`}>
+                        <p className="text-xs text-gray-400 mb-1">⏱️ Time Remaining</p>
+                        <p className={`text-2xl font-mono font-bold ${timeRemaining < 5 * 60 * 1000 ? 'text-red-400 animate-pulse' : 'text-white'
+                            }`}>
                             {formatTimeRemaining(timeRemaining)}
                         </p>
                     </div>
                 )}
 
-                {/* Progress Badge */}
+                {/* Progress Badge - only show completion/status badges */}
                 <div className="flex gap-2 flex-wrap">
-                    {isHuntStarted && (
-                        <Badge variant="outline" className="border-white/30 text-gray-300">
-                            Step {localTeam.current_step + 1} of {totalClues || "?"}
-                        </Badge>
-                    )}
                     {isDisqualified && (
                         <Badge variant="destructive">Disqualified</Badge>
                     )}
@@ -389,11 +400,6 @@ export default function HuntPage() {
                                 <p className="text-gray-300 text-lg leading-relaxed whitespace-pre-wrap">
                                     {currentClue.clue_text}
                                 </p>
-                                {currentClue.location_name && (
-                                    <p className="text-sm text-gray-400">
-                                        📍 Location: {currentClue.location_name}
-                                    </p>
-                                )}
 
                                 {/* Timed Hint Section */}
                                 {currentClue.hint_text && (
