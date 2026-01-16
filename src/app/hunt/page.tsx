@@ -454,15 +454,6 @@ export default function HuntPage() {
                         </CardContent>
                     </Card>
                 )}
-
-                {/* Navigation */}
-                <div className="flex justify-center gap-4 pt-4">
-                    <Link href="/progress">
-                        <Button variant="ghost" className="text-gray-400 hover:text-white">
-                            View Progress
-                        </Button>
-                    </Link>
-                </div>
             </div>
         </div>
     );

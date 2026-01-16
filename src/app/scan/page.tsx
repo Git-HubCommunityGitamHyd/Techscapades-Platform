@@ -18,8 +18,10 @@ export default function ScanPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [manualCode, setManualCode] = useState("");
     const [showManualInput, setShowManualInput] = useState(false);
+    const [scanLocked, setScanLocked] = useState(false); // Prevent any more scans after first result
     const scannerRef = useRef<HTMLDivElement>(null);
     const html5QrCodeRef = useRef<unknown>(null);
+    const lastScannedRef = useRef<string>(""); // Debounce duplicate scans
 
     const stopScanner = useCallback(async () => {
         if (html5QrCodeRef.current) {
@@ -48,8 +50,18 @@ export default function ScanPage() {
     }, [authLoading, team, router, stopScanner]);
 
     const processQRCode = async (decodedText: string) => {
-        if (isProcessing || !localTeam) return;
+        // Prevent multiple scans - lock after first scan
+        if (isProcessing || !localTeam || scanLocked) return;
+
+        // Debounce: ignore duplicate scans of same code within 3 seconds
+        if (lastScannedRef.current === decodedText) return;
+        lastScannedRef.current = decodedText;
+
+        // Lock scanning and stop the camera immediately
+        setScanLocked(true);
         setIsProcessing(true);
+        await stopScanner();
+        setIsScanning(false);
 
         try {
             let token = decodedText;
@@ -69,10 +81,6 @@ export default function ScanPage() {
             // Handle fake QR codes - redirect to the prank URL
             if (data.isFake && data.redirect_url) {
                 setResult({ success: false, message: data.message });
-                await stopScanner();
-                setIsScanning(false);
-
-                // Redirect to the prank URL after showing the message
                 setTimeout(() => {
                     window.location.href = data.redirect_url;
                 }, 1500);
@@ -86,16 +94,24 @@ export default function ScanPage() {
                 localStorage.setItem("team", JSON.stringify(updatedTeam));
                 setLocalTeam(updatedTeam);
 
-                await stopScanner();
-                setIsScanning(false);
-
                 setTimeout(() => {
                     router.push("/hunt");
                 }, 2000);
+            } else {
+                // For errors, allow trying again after 3 seconds
+                setTimeout(() => {
+                    setScanLocked(false);
+                    lastScannedRef.current = "";
+                }, 3000);
             }
         } catch (error) {
             console.error("Scan error:", error);
             setResult({ success: false, message: "Failed to process QR code" });
+            // Allow retry after error
+            setTimeout(() => {
+                setScanLocked(false);
+                lastScannedRef.current = "";
+            }, 3000);
         } finally {
             setIsProcessing(false);
         }

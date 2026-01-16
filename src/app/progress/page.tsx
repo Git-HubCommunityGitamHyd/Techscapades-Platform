@@ -110,6 +110,37 @@ export default function ProgressPage() {
 
     if (!localTeam) return null;
 
+    // Check if hunt is complete or timed out
+    const isHuntComplete = localTeam.current_step >= totalClues && totalClues > 0;
+    const isHuntTimedOut = event?.hunt_started_at && (() => {
+        const huntDuration = (event.hunt_duration_minutes || 60) * 60 * 1000;
+        const huntStartTime = new Date(event.hunt_started_at).getTime();
+        const huntEndTime = huntStartTime + huntDuration;
+        return Date.now() >= huntEndTime;
+    })();
+
+    // Block access during active hunt to prevent collusion
+    if (!isHuntComplete && !isHuntTimedOut) {
+        return (
+            <div className="min-h-screen bg-black p-4 flex items-center justify-center">
+                <Card className="bg-zinc-950 border-white/10 max-w-md">
+                    <CardContent className="pt-6 text-center">
+                        <div className="text-5xl mb-4">🔒</div>
+                        <h2 className="text-xl font-bold text-white mb-2">Journey Locked</h2>
+                        <p className="text-gray-400 mb-4">
+                            Your journey recap will be available after you complete the hunt or when time runs out.
+                        </p>
+                        <Link href="/hunt">
+                            <Button className="bg-white hover:bg-gray-200 text-black">
+                                Back to Hunt
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     const progressPercent = totalClues > 0 ? (localTeam.current_step / totalClues) * 100 : 0;
 
     return (
@@ -122,7 +153,7 @@ export default function ProgressPage() {
                             ← Back
                         </Button>
                     </Link>
-                    <h1 className="text-xl font-bold text-white">Your Progress</h1>
+                    <h1 className="text-xl font-bold text-white">🏁 Your Journey</h1>
                     <div className="w-16" />
                 </div>
 
