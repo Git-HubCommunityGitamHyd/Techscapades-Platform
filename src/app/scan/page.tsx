@@ -205,7 +205,25 @@ export default function ScanPage() {
                 </Card>
 
                 {/* Controls */}
-                {!isScanning ? (
+                {result?.success ? (
+                    // Success - show redirecting message
+                    <div className="text-center py-4">
+                        <p className="text-green-400 font-medium">Redirecting to next clue...</p>
+                    </div>
+                ) : result && !result.success ? (
+                    // Error - show try again button
+                    <Button
+                        onClick={() => {
+                            setResult(null);
+                            setScanLocked(false);
+                            lastScannedRef.current = "";
+                            startScanner();
+                        }}
+                        className="w-full h-14 text-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
+                    >
+                        🔄 Try Again
+                    </Button>
+                ) : !isScanning ? (
                     <Button
                         onClick={startScanner}
                         className="w-full h-14 text-lg bg-white hover:bg-gray-200 text-black font-semibold"

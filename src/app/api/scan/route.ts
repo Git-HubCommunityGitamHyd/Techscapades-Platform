@@ -106,6 +106,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (qrError || !qrCode) {
+            console.log("QR lookup failed:", { token, eventId: team.event_id, error: qrError?.message });
             return NextResponse.json(
                 { success: false, message: "Invalid QR code" },
                 { status: 400 }
@@ -141,6 +142,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (!expectedClueOrder) {
+            console.log("No expected clue order found:", { team_id, current_step: team.current_step });
             return NextResponse.json(
                 { success: false, message: "No more clues to scan - hunt complete!" },
                 { status: 400 }
@@ -149,6 +151,11 @@ export async function POST(request: NextRequest) {
 
         // Verify this is the expected clue
         if (qrCode.clue_id !== expectedClueOrder.clue_id) {
+            console.log("Wrong clue scanned:", {
+                scanned_clue_id: qrCode.clue_id,
+                expected_clue_id: expectedClueOrder.clue_id,
+                current_step: team.current_step
+            });
             return NextResponse.json(
                 { success: false, message: "Wrong QR code! This is not your next clue." },
                 { status: 400 }
@@ -164,6 +171,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (existingScan) {
+            console.log("Duplicate scan attempted:", { team_id, clue_id: qrCode.clue_id });
             return NextResponse.json(
                 { success: false, message: "You've already scanned this clue" },
                 { status: 400 }
