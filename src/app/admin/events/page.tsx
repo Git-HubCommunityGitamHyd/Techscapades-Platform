@@ -343,7 +343,7 @@ export default function EventsPage() {
                                         value={formData.start_date}
                                         onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                                         min={!editingEvent ? getTodayDate() : undefined}
-                                        className="bg-zinc-900 border-white/10 text-white flex-1"
+                                        className="bg-zinc-900 border-white/10 text-white flex-1 [color-scheme:dark]"
                                         required
                                     />
                                     <Select value={formData.start_hour} onValueChange={(v) => setFormData({ ...formData, start_hour: v })}>
@@ -379,7 +379,7 @@ export default function EventsPage() {
                                         value={formData.end_date}
                                         onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                                         min={formData.start_date || undefined}
-                                        className="bg-zinc-900 border-white/10 text-white flex-1"
+                                        className="bg-zinc-900 border-white/10 text-white flex-1 [color-scheme:dark]"
                                         required
                                     />
                                     <Select value={formData.end_hour} onValueChange={(v) => setFormData({ ...formData, end_hour: v })}>
