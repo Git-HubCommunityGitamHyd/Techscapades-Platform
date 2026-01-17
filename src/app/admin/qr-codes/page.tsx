@@ -13,7 +13,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { createClient } from "@/lib/supabase/client";
 import type { Event, Clue, QRCode } from "@/lib/types";
 
 interface FakeQRForm {
@@ -49,34 +48,41 @@ export default function QRCodesPage() {
     }, [selectedEvent]);
 
     const fetchEvents = async () => {
-        const supabase = createClient();
-        const { data } = await supabase.from("events").select("*").order("created_at", { ascending: false });
-        setEvents(data || []);
-        if (data && data.length > 0) {
-            setSelectedEvent(data[0].id);
+        try {
+            const response = await fetch("/api/admin/events");
+            const data = await response.json();
+            if (data.success && data.data?.length > 0) {
+                setEvents(data.data);
+                setSelectedEvent(data.data[0].id);
+            }
+        } catch (err) {
+            console.error("Fetch events error:", err);
         }
         setIsLoading(false);
     };
 
     const fetchClues = async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-            .from("clues")
-            .select("*")
-            .eq("event_id", selectedEvent)
-            .order("step_number", { ascending: true });
-        setClues(data || []);
+        try {
+            const response = await fetch(`/api/admin/clues?event_id=${selectedEvent}`);
+            const data = await response.json();
+            if (data.success) {
+                setClues(data.data || []);
+            }
+        } catch (err) {
+            console.error("Fetch clues error:", err);
+        }
     };
 
     const fetchFakeQRs = async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-            .from("qr_codes")
-            .select("*")
-            .eq("event_id", selectedEvent)
-            .eq("is_fake", true)
-            .order("created_at", { ascending: true });
-        setFakeQRs(data || []);
+        try {
+            const response = await fetch(`/api/admin/qr/fake?event_id=${selectedEvent}`);
+            const data = await response.json();
+            if (data.success) {
+                setFakeQRs(data.data || []);
+            }
+        } catch (err) {
+            console.error("Fetch fake QRs error:", err);
+        }
     };
 
     const createFakeQR = async () => {
@@ -90,29 +96,27 @@ export default function QRCodesPage() {
         setSuccess("");
 
         try {
-            const supabase = createClient();
-            const qrToken = `FAKE_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-
-            const { error: insertError } = await supabase
-                .from("qr_codes")
-                .insert({
+            const response = await fetch("/api/admin/qr/fake", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
                     event_id: selectedEvent,
-                    clue_id: null,
-                    qr_token: qrToken,
-                    is_fake: true,
+                    label: fakeForm.label,
                     redirect_url: fakeForm.redirect_url,
-                    fake_label: fakeForm.label,
-                });
+                }),
+            });
 
-            if (insertError) {
-                throw insertError;
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || "Failed to create fake QR");
             }
 
             setSuccess(`Fake QR "${fakeForm.label}" created successfully!`);
             setFakeForm({ label: "", redirect_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" });
             fetchFakeQRs();
-        } catch (err) {
-            setError("Failed to create fake QR code");
+        } catch (err: any) {
+            setError(err.message || "Failed to create fake QR code");
             console.error(err);
         } finally {
             setCreatingFake(false);
@@ -123,18 +127,20 @@ export default function QRCodesPage() {
         if (!confirm("Are you sure you want to delete this fake QR?")) return;
 
         try {
-            const supabase = createClient();
-            const { error: deleteError } = await supabase
-                .from("qr_codes")
-                .delete()
-                .eq("id", id);
+            const response = await fetch(`/api/admin/qr/fake?id=${id}`, {
+                method: "DELETE",
+            });
 
-            if (deleteError) throw deleteError;
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || "Failed to delete fake QR");
+            }
 
             setSuccess("Fake QR deleted");
             fetchFakeQRs();
-        } catch {
-            setError("Failed to delete fake QR");
+        } catch (err: any) {
+            setError(err.message || "Failed to delete fake QR");
         }
     };
 
