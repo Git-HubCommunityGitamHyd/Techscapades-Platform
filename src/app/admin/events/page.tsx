@@ -40,6 +40,7 @@ export default function EventsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         start_date: "",
@@ -86,6 +87,10 @@ export default function EventsPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        
+        // Prevent multiple submissions
+        if (isSubmitting) return;
+        setIsSubmitting(true);
 
         const startTime = combineDateTime(formData.start_date, formData.start_hour, formData.start_minute);
         const endTime = combineDateTime(formData.end_date, formData.end_hour, formData.end_minute);
@@ -97,6 +102,7 @@ export default function EventsPage() {
             const startDate = new Date(formData.start_date);
             if (startDate < today) {
                 setError("Start date cannot be in the past");
+                setIsSubmitting(false);
                 return;
             }
         }
@@ -104,6 +110,7 @@ export default function EventsPage() {
         // Validate that end time is after start time
         if (new Date(endTime) <= new Date(startTime)) {
             setError("End time must be after start time");
+            setIsSubmitting(false);
             return;
         }
 
@@ -125,6 +132,7 @@ export default function EventsPage() {
                 const data = await response.json();
                 if (!data.success) {
                     setError(data.message || "Failed to update event");
+                    setIsSubmitting(false);
                     return;
                 }
                 setSuccess("Event updated successfully!");
@@ -144,6 +152,7 @@ export default function EventsPage() {
                 const data = await response.json();
                 if (!data.success) {
                     setError(data.message || "Failed to create event");
+                    setIsSubmitting(false);
                     return;
                 }
                 setSuccess("Event created successfully!");
@@ -156,6 +165,8 @@ export default function EventsPage() {
         } catch (err) {
             console.error("Submit error:", err);
             setError("Failed to save event");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -172,6 +183,7 @@ export default function EventsPage() {
             hint_delay_minutes: "5",
         });
         setEditingEvent(null);
+        setIsSubmitting(false);
     };
 
     const openEditDialog = (event: Event) => {
@@ -422,8 +434,15 @@ export default function EventsPage() {
                                 </div>
                             </div>
 
-                            <Button type="submit" className="w-full bg-white hover:bg-gray-200 text-black">
-                                {editingEvent ? "Update Event" : "Create Event"}
+                            <Button 
+                                type="submit" 
+                                className="w-full bg-white hover:bg-gray-200 text-black"
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting 
+                                    ? (editingEvent ? "Updating..." : "Creating...") 
+                                    : (editingEvent ? "Update Event" : "Create Event")
+                                }
                             </Button>
                         </form>
                     </DialogContent>
