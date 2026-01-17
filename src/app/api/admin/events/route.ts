@@ -32,6 +32,17 @@ export async function POST(request: NextRequest) {
         }
 
         const supabase = createAdminClient();
+        
+        // Check if event name already exists
+        const { data: existingEvent } = await supabase
+            .from("events")
+            .select("id")
+            .eq("name", name)
+            .single();
+        
+        if (existingEvent) {
+            return NextResponse.json({ success: false, message: "An event with this name already exists" }, { status: 400 });
+        }
         const { data, error } = await supabase
             .from("events")
             .insert({
@@ -68,6 +79,20 @@ export async function PUT(request: NextRequest) {
         }
 
         const supabase = createAdminClient();
+        
+        // Check if event name already exists (excluding current event)
+        if (updates.name) {
+            const { data: existingEvent } = await supabase
+                .from("events")
+                .select("id")
+                .eq("name", updates.name)
+                .neq("id", id)
+                .single();
+            
+            if (existingEvent) {
+                return NextResponse.json({ success: false, message: "An event with this name already exists" }, { status: 400 });
+            }
+        }
 
         // If activating, deactivate all other events first
         if (updates.is_active === true) {

@@ -40,6 +40,7 @@ export default function EventsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         start_date: "",
@@ -83,9 +84,36 @@ export default function EventsPage() {
         return new Date(`${date}T${hour}:${minute}:00`).toISOString();
     };
 
+    // Calculate duration in minutes between start and end
+    const calculateDuration = (startDate: string, startHour: string, startMinute: string, 
+                                endDate: string, endHour: string, endMinute: string) => {
+        if (!startDate || !endDate) return "";
+        const start = new Date(`${startDate}T${startHour}:${startMinute}:00`);
+        const end = new Date(`${endDate}T${endHour}:${endMinute}:00`);
+        const diffMs = end.getTime() - start.getTime();
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        return diffMinutes > 0 ? String(diffMinutes) : "";
+    };
+
+    // Calculate end date/time based on start and duration
+    const calculateEndDateTime = (startDate: string, startHour: string, startMinute: string, durationMinutes: string) => {
+        if (!startDate || !durationMinutes) return null;
+        const start = new Date(`${startDate}T${startHour}:${startMinute}:00`);
+        const end = new Date(start.getTime() + parseInt(durationMinutes) * 60 * 1000);
+        return {
+            date: end.toISOString().split("T")[0],
+            hour: String(end.getHours()).padStart(2, "0"),
+            minute: String(end.getMinutes()).padStart(2, "0"),
+        };
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        
+        // Prevent multiple submissions
+        if (isSubmitting) return;
+        setIsSubmitting(true);
 
         const startTime = combineDateTime(formData.start_date, formData.start_hour, formData.start_minute);
         const endTime = combineDateTime(formData.end_date, formData.end_hour, formData.end_minute);
@@ -97,6 +125,7 @@ export default function EventsPage() {
             const startDate = new Date(formData.start_date);
             if (startDate < today) {
                 setError("Start date cannot be in the past");
+                setIsSubmitting(false);
                 return;
             }
         }
@@ -104,6 +133,7 @@ export default function EventsPage() {
         // Validate that end time is after start time
         if (new Date(endTime) <= new Date(startTime)) {
             setError("End time must be after start time");
+            setIsSubmitting(false);
             return;
         }
 
@@ -125,6 +155,7 @@ export default function EventsPage() {
                 const data = await response.json();
                 if (!data.success) {
                     setError(data.message || "Failed to update event");
+                    setIsSubmitting(false);
                     return;
                 }
                 setSuccess("Event updated successfully!");
@@ -144,6 +175,7 @@ export default function EventsPage() {
                 const data = await response.json();
                 if (!data.success) {
                     setError(data.message || "Failed to create event");
+                    setIsSubmitting(false);
                     return;
                 }
                 setSuccess("Event created successfully!");
@@ -156,6 +188,8 @@ export default function EventsPage() {
         } catch (err) {
             console.error("Submit error:", err);
             setError("Failed to save event");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -172,6 +206,7 @@ export default function EventsPage() {
             hint_delay_minutes: "5",
         });
         setEditingEvent(null);
+        setIsSubmitting(false);
     };
 
     const openEditDialog = (event: Event) => {
@@ -329,12 +364,39 @@ export default function EventsPage() {
                                     <Input
                                         type="date"
                                         value={formData.start_date}
-                                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                                        onChange={(e) => {
+                                            const newStartDate = e.target.value;
+                                            const endDateTime = calculateEndDateTime(newStartDate, formData.start_hour, formData.start_minute, formData.hunt_duration_minutes);
+                                            if (endDateTime) {
+                                                setFormData({ 
+                                                    ...formData, 
+                                                    start_date: newStartDate,
+                                                    end_date: endDateTime.date,
+                                                    end_hour: endDateTime.hour,
+                                                    end_minute: endDateTime.minute,
+                                                });
+                                            } else {
+                                                setFormData({ ...formData, start_date: newStartDate });
+                                            }
+                                        }}
                                         min={!editingEvent ? getTodayDate() : undefined}
-                                        className="bg-zinc-900 border-white/10 text-white flex-1"
+                                        className="bg-zinc-900 border-white/10 text-white flex-1 [color-scheme:dark]"
                                         required
                                     />
-                                    <Select value={formData.start_hour} onValueChange={(v) => setFormData({ ...formData, start_hour: v })}>
+                                    <Select value={formData.start_hour} onValueChange={(v) => {
+                                        const endDateTime = calculateEndDateTime(formData.start_date, v, formData.start_minute, formData.hunt_duration_minutes);
+                                        if (endDateTime) {
+                                            setFormData({ 
+                                                ...formData, 
+                                                start_hour: v,
+                                                end_date: endDateTime.date,
+                                                end_hour: endDateTime.hour,
+                                                end_minute: endDateTime.minute,
+                                            });
+                                        } else {
+                                            setFormData({ ...formData, start_hour: v });
+                                        }
+                                    }}>
                                         <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -345,7 +407,20 @@ export default function EventsPage() {
                                         </SelectContent>
                                     </Select>
                                     <span className="text-white self-center">:</span>
-                                    <Select value={formData.start_minute} onValueChange={(v) => setFormData({ ...formData, start_minute: v })}>
+                                    <Select value={formData.start_minute} onValueChange={(v) => {
+                                        const endDateTime = calculateEndDateTime(formData.start_date, formData.start_hour, v, formData.hunt_duration_minutes);
+                                        if (endDateTime) {
+                                            setFormData({ 
+                                                ...formData, 
+                                                start_minute: v,
+                                                end_date: endDateTime.date,
+                                                end_hour: endDateTime.hour,
+                                                end_minute: endDateTime.minute,
+                                            });
+                                        } else {
+                                            setFormData({ ...formData, start_minute: v });
+                                        }
+                                    }}>
                                         <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -365,12 +440,29 @@ export default function EventsPage() {
                                     <Input
                                         type="date"
                                         value={formData.end_date}
-                                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                                        onChange={(e) => {
+                                            const newEndDate = e.target.value;
+                                            const duration = calculateDuration(formData.start_date, formData.start_hour, formData.start_minute, 
+                                                                              newEndDate, formData.end_hour, formData.end_minute);
+                                            setFormData({ 
+                                                ...formData, 
+                                                end_date: newEndDate,
+                                                hunt_duration_minutes: duration || formData.hunt_duration_minutes
+                                            });
+                                        }}
                                         min={formData.start_date || undefined}
-                                        className="bg-zinc-900 border-white/10 text-white flex-1"
+                                        className="bg-zinc-900 border-white/10 text-white flex-1 [color-scheme:dark]"
                                         required
                                     />
-                                    <Select value={formData.end_hour} onValueChange={(v) => setFormData({ ...formData, end_hour: v })}>
+                                    <Select value={formData.end_hour} onValueChange={(v) => {
+                                        const duration = calculateDuration(formData.start_date, formData.start_hour, formData.start_minute, 
+                                                                          formData.end_date, v, formData.end_minute);
+                                        setFormData({ 
+                                            ...formData, 
+                                            end_hour: v,
+                                            hunt_duration_minutes: duration || formData.hunt_duration_minutes
+                                        });
+                                    }}>
                                         <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -381,7 +473,15 @@ export default function EventsPage() {
                                         </SelectContent>
                                     </Select>
                                     <span className="text-white self-center">:</span>
-                                    <Select value={formData.end_minute} onValueChange={(v) => setFormData({ ...formData, end_minute: v })}>
+                                    <Select value={formData.end_minute} onValueChange={(v) => {
+                                        const duration = calculateDuration(formData.start_date, formData.start_hour, formData.start_minute, 
+                                                                          formData.end_date, formData.end_hour, v);
+                                        setFormData({ 
+                                            ...formData, 
+                                            end_minute: v,
+                                            hunt_duration_minutes: duration || formData.hunt_duration_minutes
+                                        });
+                                    }}>
                                         <SelectTrigger className="w-20 bg-zinc-900 border-white/10 text-white">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -403,7 +503,21 @@ export default function EventsPage() {
                                         min="1"
                                         max="180"
                                         value={formData.hunt_duration_minutes}
-                                        onChange={(e) => setFormData({ ...formData, hunt_duration_minutes: e.target.value })}
+                                        onChange={(e) => {
+                                            const newDuration = e.target.value;
+                                            const endDateTime = calculateEndDateTime(formData.start_date, formData.start_hour, formData.start_minute, newDuration);
+                                            if (endDateTime) {
+                                                setFormData({ 
+                                                    ...formData, 
+                                                    hunt_duration_minutes: newDuration,
+                                                    end_date: endDateTime.date,
+                                                    end_hour: endDateTime.hour,
+                                                    end_minute: endDateTime.minute,
+                                                });
+                                            } else {
+                                                setFormData({ ...formData, hunt_duration_minutes: newDuration });
+                                            }
+                                        }}
                                         className="bg-zinc-900 border-white/10 text-white"
                                     />
                                     <p className="text-xs text-gray-500">Time teams have to complete</p>
@@ -422,8 +536,15 @@ export default function EventsPage() {
                                 </div>
                             </div>
 
-                            <Button type="submit" className="w-full bg-white hover:bg-gray-200 text-black">
-                                {editingEvent ? "Update Event" : "Create Event"}
+                            <Button 
+                                type="submit" 
+                                className="w-full bg-white hover:bg-gray-200 text-black"
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting 
+                                    ? (editingEvent ? "Updating..." : "Creating...") 
+                                    : (editingEvent ? "Update Event" : "Create Event")
+                                }
                             </Button>
                         </form>
                     </DialogContent>
