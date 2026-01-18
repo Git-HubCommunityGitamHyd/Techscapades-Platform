@@ -116,15 +116,17 @@ export default function HuntPage() {
             if (freshTeam) {
                 setLocalTeam(freshTeam);
                 localStorage.setItem("team", JSON.stringify(freshTeam));
+                // Fetch event first, then clue
+                await fetchEvent(freshTeam.event_id);
                 fetchCurrentClue(freshTeam);
             } else {
                 setLocalTeam(team);
+                await fetchEvent(team.event_id);
                 fetchCurrentClue(team);
             }
             setIsLoading(false);
         };
 
-        fetchEvent(team.event_id);
         fetchFreshTeamData();
 
         const supabase = createClient();
@@ -272,6 +274,15 @@ export default function HuntPage() {
     }
 
     if (!localTeam) return null;
+
+    // Wait for event data to load before determining hunt state
+    if (!event) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-black">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+            </div>
+        );
+    }
 
     const isHuntStarted = !!event?.hunt_started_at;
     const isHuntTimedOut = timeRemaining !== null && timeRemaining === 0;
