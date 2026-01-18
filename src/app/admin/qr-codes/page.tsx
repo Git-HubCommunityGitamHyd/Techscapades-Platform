@@ -13,11 +13,26 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import QRCodeLib from "qrcode";
 import type { Event, Clue, QRCode } from "@/lib/types";
 
 interface FakeQRForm {
     label: string;
     redirect_url: string;
+}
+
+interface QRPreview {
+    type: 'clue' | 'fake';
+    title: string;
+    url: string;
+    dataUrl: string;
 }
 
 export default function QRCodesPage() {
@@ -30,6 +45,7 @@ export default function QRCodesPage() {
     const [creatingFake, setCreatingFake] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [qrPreview, setQrPreview] = useState<QRPreview | null>(null);
     const [fakeForm, setFakeForm] = useState<FakeQRForm>({
         label: "",
         redirect_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -184,6 +200,66 @@ export default function QRCodesPage() {
         }
     };
 
+    const previewClueQR = async (clue: Clue) => {
+        try {
+            // Fetch the QR token for this clue
+            const response = await fetch(`/api/admin/qr/token?clue_id=${clue.id}`);
+            const qrData = await response.json();
+            
+            if (!qrData.success) {
+                throw new Error(qrData.message);
+            }
+            
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+            const scanUrl = `${appUrl}/scan?token=${qrData.token}`;
+            
+            const dataUrl = await QRCodeLib.toDataURL(scanUrl, {
+                width: 400,
+                margin: 2,
+                color: {
+                    dark: "#1e1e2e",
+                    light: "#ffffff",
+                },
+            });
+
+            setQrPreview({
+                type: 'clue',
+                title: clue.location_name || `Clue ${clue.step_number}`,
+                url: scanUrl,
+                dataUrl,
+            });
+        } catch (err) {
+            console.error('Preview error:', err);
+            setError('Failed to generate preview');
+        }
+    };
+
+    const previewFakeQR = async (qr: QRCode) => {
+        try {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+            const scanUrl = `${appUrl}/scan?token=${qr.qr_token}`;
+            
+            const dataUrl = await QRCodeLib.toDataURL(scanUrl, {
+                width: 400,
+                margin: 2,
+                color: {
+                    dark: "#dc2626", // Red for fake
+                    light: "#ffffff",
+                },
+            });
+
+            setQrPreview({
+                type: 'fake',
+                title: qr.fake_label || 'Fake QR',
+                url: scanUrl,
+                dataUrl,
+            });
+        } catch (err) {
+            console.error('Preview error:', err);
+            setError('Failed to generate preview');
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -287,6 +363,14 @@ export default function QRCodesPage() {
                                         <p className="text-white truncate">{clue.location_name || `Clue ${clue.step_number}`}</p>
                                         <p className="text-gray-500 text-sm truncate">{clue.clue_text}</p>
                                     </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => previewClueQR(clue)}
+                                        className="border-white/20 text-white hover:bg-white/10"
+                                    >
+                                        Preview
+                                    </Button>
                                     <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                                     </svg>
@@ -358,6 +442,14 @@ export default function QRCodesPage() {
                                     <Button
                                         variant="outline"
                                         size="sm"
+                                        onClick={() => previewFakeQR(qr)}
+                                        className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                                    >
+                                        Preview
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => deleteFakeQR(qr.id)}
                                         className="border-red-500/50 text-red-400 hover:bg-red-500/20"
                                     >
@@ -369,6 +461,53 @@ export default function QRCodesPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* QR Preview Dialog */}
+            <Dialog open={!!qrPreview} onOpenChange={(open) => !open && setQrPreview(null)}>
+                <DialogContent className="bg-zinc-900 border-white/10 text-white sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-white">
+                            {qrPreview?.type === 'fake' ? '🎭 ' : ''}
+                            {qrPreview?.title}
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            {qrPreview?.type === 'fake' ? 'Fake QR Code Preview' : 'Clue QR Code Preview'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center gap-4 py-4">
+                        {qrPreview?.dataUrl && (
+                            <>
+                                <div className={`p-4 bg-white rounded-lg ${qrPreview.type === 'fake' ? 'ring-2 ring-red-500' : ''}`}>
+                                    <img 
+                                        src={qrPreview.dataUrl} 
+                                        alt="QR Code Preview" 
+                                        className="w-64 h-64"
+                                    />
+                                </div>
+                                <div className="w-full">
+                                    <Label className="text-gray-400 text-sm">Scan URL:</Label>
+                                    <p className="text-xs text-gray-500 break-all mt-1 bg-black/50 p-2 rounded">
+                                        {qrPreview.url}
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.download = `${qrPreview.title.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+                                        link.href = qrPreview.dataUrl;
+                                        link.click();
+                                    }}
+                                    className="border-white/20 text-white hover:bg-white/10"
+                                >
+                                    Download QR Code
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
