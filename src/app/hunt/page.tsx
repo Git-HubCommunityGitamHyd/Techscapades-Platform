@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function HuntPage() {
+    const router = useRouter();
     const { team, player, isLoading: authLoading, logout } = useAuth();
     const [localTeam, setLocalTeam] = useState<Team | null>(null);
     const [currentClue, setCurrentClue] = useState<Clue | null>(null);
@@ -129,6 +131,9 @@ export default function HuntPage() {
 
         fetchFreshTeamData();
 
+        // Prefetch scan page for faster navigation
+        router.prefetch('/scan');
+
         const supabase = createClient();
 
         // Subscribe to team updates
@@ -142,8 +147,8 @@ export default function HuntPage() {
                     table: "teams",
                     filter: `id=eq.${team.id}`,
                 },
-                (payload) => {
-                    const updatedTeam = payload.new as Team;
+                (payload: { new: Team }) => {
+                    const updatedTeam = payload.new;
                     setLocalTeam(updatedTeam);
                     localStorage.setItem("team", JSON.stringify(updatedTeam));
                     fetchCurrentClue(updatedTeam);
@@ -162,8 +167,8 @@ export default function HuntPage() {
                     table: "events",
                     filter: `id=eq.${team.event_id}`,
                 },
-                (payload) => {
-                    const updatedEvent = payload.new as Event;
+                (payload: { new: Event }) => {
+                    const updatedEvent = payload.new;
                     setEvent(updatedEvent);
                 }
             )
@@ -173,7 +178,7 @@ export default function HuntPage() {
             supabase.removeChannel(teamChannel);
             supabase.removeChannel(eventChannel);
         };
-    }, [authLoading, team, fetchCurrentClue, fetchEvent]);
+    }, [authLoading, team, fetchCurrentClue, fetchEvent, router]);
 
     // Timer effect - updates every second when hunt is active
     useEffect(() => {

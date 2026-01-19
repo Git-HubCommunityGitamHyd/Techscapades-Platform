@@ -62,7 +62,7 @@ export default function MonitorPage() {
         if (teamsData) {
             // Get last scan for each team
             const teamsWithScans: TeamWithScan[] = await Promise.all(
-                teamsData.map(async (team) => {
+                teamsData.map(async (team: Team) => {
                     const { data: scans } = await supabase
                         .from("scans")
                         .select("*")
@@ -111,7 +111,7 @@ export default function MonitorPage() {
         setEvents(data || []);
 
         // Select active event by default
-        const activeEvent = data?.find((e) => e.is_active);
+        const activeEvent = data?.find((e: Event) => e.is_active);
         if (activeEvent) {
             setSelectedEvent(activeEvent.id);
         } else if (data && data.length > 0) {

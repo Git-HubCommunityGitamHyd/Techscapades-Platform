@@ -1,8 +1,25 @@
 import { createBrowserClient } from "@supabase/ssr";
 
+// Singleton pattern - reuse client across renders
+let supabaseClient: ReturnType<typeof createBrowserClient> | null = null;
+
 export function createClient() {
-    return createBrowserClient(
+    if (supabaseClient) {
+        return supabaseClient;
+    }
+
+    supabaseClient = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            // Optimize realtime connection
+            realtime: {
+                params: {
+                    eventsPerSecond: 2, // Reduce websocket traffic
+                },
+            },
+        }
     );
+
+    return supabaseClient;
 }

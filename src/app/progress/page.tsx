@@ -47,9 +47,9 @@ export default function ProgressPage() {
             .order("scanned_at", { ascending: true });
 
         if (scanData && clues) {
-            const scansWithClues = scanData.map((scan) => ({
+            const scansWithClues = scanData.map((scan: Scan) => ({
                 ...scan,
-                clue: clues.find((c) => c.id === scan.clue_id),
+                clue: clues.find((c: Clue) => c.id === scan.clue_id),
             }));
             setScans(scansWithClues);
         }
