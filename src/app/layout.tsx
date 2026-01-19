@@ -6,11 +6,14 @@ import { AuthProvider } from "@/contexts/AuthContext";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap", // Prevent font blocking
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap", // Prevent font blocking
+  preload: false, // Don't preload mono font - rarely used
 });
 
 export const metadata: Metadata = {

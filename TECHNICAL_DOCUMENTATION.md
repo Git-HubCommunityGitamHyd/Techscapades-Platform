@@ -1,7 +1,7 @@
 # Techscapades 4.0 Platform - Technical Documentation
 
-> Last Updated: January 16, 2026
-> Version: 2.0
+> Last Updated: January 19, 2026
+> Version: 2.1 (Jan 19 updates by @SaiGurulnukurthi)
 
 ## 📋 Table of Contents
 
@@ -84,7 +84,10 @@ src/
 │   │   │   │   ├── [id]/move/route.ts   # Move player between teams
 │   │   │   │   ├── reset-password/route.ts
 │   │   │   │   └── export/route.ts # Export CSV
-│   │   │   └── qr/generate/route.ts     # Generate QR codes ZIP
+│   │   │   └── qr/
+│   │   │       ├── generate/route.ts    # Generate QR codes ZIP
+│   │   │       ├── fake/route.ts        # NEW: Fake QR CRUD API
+│   │   │       └── token/route.ts       # NEW: Get QR token for clue
 │   │   ├── auth/
 │   │   │   ├── login/route.ts      # Player login
 │   │   │   ├── register/route.ts   # Player registration
@@ -253,6 +256,8 @@ Example with 3 clues, 3 teams:
 | POST | `/api/admin/players/reset-password` | Reset player password |
 | GET | `/api/admin/players/export` | Export players as CSV |
 | POST | `/api/admin/qr/generate` | Generate QR codes ZIP |
+| GET/POST/DELETE | `/api/admin/qr/fake` | **NEW:** Fake QR code management |
+| GET | `/api/admin/qr/token` | **NEW:** Get/generate QR token for clue |
 
 ---
 
@@ -330,6 +335,26 @@ npm run lint
 2. Use `createAdminClient()` for admin operations
 3. Add UI in appropriate page
 4. Update types in `lib/types.ts`
+
+### Recent Changes (Jan 17-19, 2026)
+
+**New Features:**
+- QR code preview functionality before generating
+- Separate API routes for fake QR management
+- Event duration auto-calculation from dates
+
+**Bug Fixes:**
+- Hunt page loading order (event before clue)
+- Duplicate event prevention on form spam
+- Event duration not updating on date change
+- QR codes not showing for selected event
+
+---
+
+## Contributors
+
+- Initial Development: @harsha
+- Bug Fixes & Features (Jan 17-19): @SaiGurulnukurthi
 
 ---
 

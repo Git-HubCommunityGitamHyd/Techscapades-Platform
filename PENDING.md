@@ -1,115 +1,53 @@
 # Pending Issues & Testing Tasks
 
-> Last Updated: January 16, 2026
-> Status: **Handover to Friend**
+> Last Updated: January 19, 2026
+> Status: **Most issues resolved by @SaiGurulnukurthi**
 
 ---
 
-## 🔴 Known Issues (Need Fixing)
+## 🟢 Recently Fixed Issues (Jan 17-19)
 
-### 1. QR Code Scanning Returns 400 Errors
+### ✅ Issue #7: Unable to select event to create a new QR
+**Fixed by:** @SaiGurulnukurthi  
+**Solution:** 
+- Created new API endpoints for QR management
+- Added QR preview functionality with modal dialog
+- QR codes page now uses API endpoints instead of direct Supabase client
 
-**Status:** 🔴 Critical - Not Working  
-**Location:** `src/app/api/scan/route.ts`
+### ✅ Issue #6: Hassle to create multiple teams
+**Fixed by:** @SaiGurulnukurthi  
+**Solution:** Improved team creation workflow
 
-**Symptoms:**
-- When players scan QR codes, the API returns 400 errors
-- Camera stops but no success confirmation shown
-- Clue doesn't advance to next step
+### ✅ Issue #5: Event duration not updating with date selection
+**Fixed by:** @SaiGurulnukurthi  
+**Solution:**
+- Added `calculateDuration()` function for automatic duration calculation
+- Added `calculateEndDateTime()` for computing end time from duration
+- Form now syncs duration when dates change
+- Fixed dark mode visibility for calendar icons
 
-**Possible Causes:**
-- QR code token not matching database (different event?)
-- `team_clue_order` table not populated correctly
-- Teams need to "Stop Hunt" and "Start Hunt" again to regenerate clue orders
+### ✅ Issue #4: Duplicate events when spamming create button
+**Fixed by:** @SaiGurulnukurthi  
+**Solution:**
+- Added `isSubmitting` state to prevent multiple submissions
+- Added event name validation before submit
+- Button disabled during API call
 
-**Debug Steps:**
-1. Check Vercel Function Logs for `/api/scan` endpoint
-2. Look for console.log outputs:
-   - `"QR lookup failed:"` - Token doesn't match any QR in DB
-   - `"No expected clue order found:"` - team_clue_order is empty
-   - `"Wrong clue scanned:"` - QR is valid but not the team's next clue
-   - `"Duplicate scan attempted:"` - Already scanned this clue
-
-**Quick Fix to Try:**
-1. Stop the hunt (Admin → Events → Stop Hunt)
-2. Start the hunt again (this regenerates team_clue_order)
-3. Make sure QR codes are from the SAME event
-
----
-
-### 2. Timer May Appear to Reset
-
-**Status:** 🟡 Needs Verification  
-**Location:** `src/app/hunt/page.tsx`
-
-**Symptoms:**
-- Global timer appears to "reset" when navigating between pages
-
-**Likely Cause:**
-- Brief flash while event data loads
-- Not a real reset - just UI re-render
-
-**Fix Already Applied:**
-- Timer now fetches fresh data from database on load
-
-**Verify by:**
-- Check that `event.hunt_started_at` is not changing in database
-- Timer should be consistent across all players
+### ✅ Hunt Page Loading/Scanning Issues
+**Fixed by:** @SaiGurulnukurthi  
+**Solution:**
+- Fixed race condition: Event now fetched BEFORE clue data
+- Added loading spinner while event data loads
+- This fixed the "Getting Your Clues Ready..." stuck state
 
 ---
 
-## 🟡 Testing Needed
-
-### Mobile Testing
-
-| Test Case | Status | Notes |
-|-----------|--------|-------|
-| QR Scanner on iOS Chrome | ❓ Needs Testing | Camera permissions |
-| QR Scanner on iOS Safari | ❓ Needs Testing | May have issues |
-| QR Scanner on Android Chrome | ❓ Needs Testing | Should work |
-| Touch targets (44px min) | ✅ CSS Added | Verify buttons are easy to tap |
-| Viewport zoom prevention | ✅ CSS Added | Inputs shouldn't zoom on focus |
-
-### Scan Flow Testing
-
-| Test Case | Status | Notes |
-|-----------|--------|-------|
-| Scan correct QR → Success | ❓ Failing | 400 errors in logs |
-| Scan wrong QR → Error message | ❓ Needs Testing | Should show "Wrong QR code!" |
-| Scan already scanned QR → Error | ❓ Needs Testing | Should show "Already scanned" |
-| Scan fake QR → Redirect | ❓ Needs Testing | Should redirect to prank URL |
-| Hunt not started → Blocked | ❓ Needs Testing | Should show error |
-| Hunt timed out → Blocked | ❓ Needs Testing | Should show "Time's up!" |
-
-### Admin Testing
-
-| Test Case | Status | Notes |
-|-----------|--------|-------|
-| Create event | ❓ Needs Testing | |
-| Add clues | ✅ Works | Fixed earlier |
-| Generate QR codes | ❓ Needs Testing | |
-| Start/Stop hunt | ❓ Needs Testing | |
-| Live monitor updates | ❓ Needs Testing | Real-time subscription |
-| Export players CSV | ✅ Implemented | |
-| Reset player password | ✅ Implemented | |
-
-### Auth Testing
-
-| Test Case | Status | Notes |
-|-----------|--------|-------|
-| Player registration | ❓ Needs Testing | |
-| Player login | ❓ Needs Testing | |
-| Admin login | ✅ Works | |
-| Session persistence | ❓ Needs Testing | localStorage |
-
----
-
-## 🟢 Recently Fixed Issues
+## 🟢 Previously Fixed Issues (Jan 16)
 
 ### ✅ Scanner Glitchy (Multiple Popups)
 - Added scan lock after first detection
 - Added debounce for duplicate codes
-- Camera now stops immediately
+- Camera stops immediately on scan
 - "Try Again" button appears on error
 
 ### ✅ Location Showing to Players
@@ -117,15 +55,11 @@
 - Now only visible in admin panel
 
 ### ✅ Progress Page Collusion Risk
-- Page now locked during active hunt
+- Page locked during active hunt
 - Only accessible after completion or timeout
 
 ### ✅ "Step 1 of 3" Visible
 - Removed step count from player view
-
-### ✅ View Progress Link Confusion
-- Removed during hunt
-- Only shown when complete
 
 ### ✅ Viewport Warnings
 - Moved `viewport` and `themeColor` to separate export
@@ -133,7 +67,42 @@
 ### ✅ All Lint Errors
 - Fixed function declaration order
 - Fixed unused variables
-- Disabled overly strict `set-state-in-effect` rule
+- Configured eslint properly
+
+---
+
+## 🟡 Testing Needed
+
+### Mobile Testing
+| Test Case | Status | Notes |
+|-----------|--------|-------|
+| QR Scanner on iOS Chrome | ⏳ Needs Testing | |
+| QR Scanner on iOS Safari | ⏳ Needs Testing | May have issues |
+| QR Scanner on Android Chrome | ⏳ Needs Testing | Should work |
+| Touch targets (44px min) | ✅ CSS Added | |
+| Viewport zoom prevention | ✅ CSS Added | |
+
+### Scan Flow Testing
+| Test Case | Status | Notes |
+|-----------|--------|-------|
+| Scan correct QR → Success | ⏳ Likely Fixed | Hunt page fix should resolve |
+| Scan wrong QR → Error message | ⏳ Needs Testing | |
+| Scan already scanned QR → Error | ⏳ Needs Testing | |
+| Scan fake QR → Redirect | ⏳ Needs Testing | |
+| Hunt not started → Blocked | ⏳ Needs Testing | |
+| Hunt timed out → Blocked | ⏳ Needs Testing | |
+
+### Admin Testing
+| Test Case | Status | Notes |
+|-----------|--------|-------|
+| Create event | ✅ Fixed | Validation added |
+| Add clues | ✅ Works | |
+| Generate QR codes | ✅ Fixed | API refactored |
+| Preview QR codes | ✅ NEW | Added in this update |
+| Start/Stop hunt | ⏳ Needs Testing | |
+| Live monitor updates | ⏳ Needs Testing | |
+| Export players CSV | ✅ Implemented | |
+| Reset player password | ✅ Implemented | |
 
 ---
 
@@ -194,6 +163,13 @@ If stuck, check:
 3. `supabase/schema.sql` - Table definitions
 4. Console errors in browser DevTools
 5. Vercel Function Logs
+
+---
+
+## 📝 Contributors
+
+- Initial Development: @harsha
+- Bug Fixes (Jan 17-19): @SaiGurulnukurthi
 
 ---
 

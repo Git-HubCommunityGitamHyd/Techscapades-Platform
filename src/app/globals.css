@@ -119,6 +119,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     /* Mobile-friendly defaults */
@@ -127,18 +128,22 @@
     /* Prevent pull-to-refresh on mobile */
     overscroll-behavior-y: contain;
   }
-  
+
   /* Prevent text size adjustment on orientation change */
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
-  
+
   /* Improve touch targets for mobile */
-  button, a, input, select, textarea {
+  button,
+  a,
+  input,
+  select,
+  textarea {
     touch-action: manipulation;
   }
-  
+
   /* Safe area padding for notched devices */
   .safe-area-inset {
     padding-top: env(safe-area-inset-top);
@@ -146,27 +151,62 @@
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
   }
-  
+
   /* Mobile-optimized scrolling */
   .mobile-scroll {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
   }
-  
+
   /* Prevent zoom on input focus (iOS) */
-  input, select, textarea {
+  input,
+  select,
+  textarea {
     font-size: 16px !important;
   }
-  
+
   @media (max-width: 640px) {
+
     /* Larger touch targets on mobile */
     button {
       min-height: 44px;
     }
-    
+
     /* Reduce heavy shadows on mobile for performance */
     .shadow-lg {
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
+  }
+
+  /* GPU acceleration for animations */
+  .animate-spin,
+  .animate-pulse {
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  /* Optimize card rendering */
+  .card {
+    contain: layout style paint;
+  }
+}
+
+/* Critical rendering optimizations */
+@layer utilities {
+
+  /* Loading skeleton animation - lightweight */
+  .skeleton {
+    @apply bg-zinc-800 animate-pulse rounded;
+  }
+
+  /* Instant tap feedback for mobile */
+  .tap-highlight {
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Hardware acceleration */
+  .gpu {
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 }

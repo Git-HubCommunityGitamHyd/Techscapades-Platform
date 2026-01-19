@@ -1,6 +1,6 @@
 # Techscapades 4.0 - Implementation Plan
 
-> **Status:** 90% Complete | **Last Updated:** January 16, 2026
+> **Status:** 95% Complete | **Last Updated:** January 19, 2026
 
 ---
 
@@ -24,12 +24,13 @@
 
 ### Phase 3: Admin Dashboard
 - [x] Admin layout with sidebar
-- [x] Event management (CRUD)
-- [x] Team management (CRUD)
+- [x] Event management (CRUD) - **Fixed: duration calculation, duplicate prevention**
+- [x] Team management (CRUD) - **Fixed: easier creation workflow**
 - [x] Clue management (CRUD)
 - [x] Player management (move, remove, reset password)
-- [x] QR code generation (ZIP download)
-- [x] Fake QR codes (Hall of Shame)
+- [x] QR code generation (ZIP download) - **Fixed: API refactored**
+- [x] QR code preview - **NEW: preview before generating**
+- [x] Fake QR codes (Hall of Shame) - **Fixed: proper API endpoints**
 - [x] Live monitoring dashboard
 - [x] Start/Stop hunt controls
 - [x] Team disqualification
@@ -37,7 +38,7 @@
 - [x] Export players to CSV
 
 ### Phase 4: Player Experience
-- [x] Hunt page with current clue
+- [x] Hunt page with current clue - **Fixed: loading state, fetch order**
 - [x] QR code scanner (html5-qrcode)
 - [x] Manual QR input for testing
 - [x] Global countdown timer
@@ -68,21 +69,14 @@
 
 ---
 
-## 🔴 Pending Issues
+## 🟡 Testing Needed
 
-### Critical
-1. **QR Scanning Returns 400 Errors**
-   - Scans fail with 400 status
-   - Need to verify team_clue_order population
-   - Need to test with "Stop Hunt" → "Start Hunt"
+### End-to-End Testing
+- [ ] Full scan flow on mobile devices
+- [ ] iOS Safari camera access
+- [ ] Real-time updates reliability
 
-### Testing Needed
-1. Full end-to-end scan flow
-2. Mobile camera on iOS Safari
-3. Real-time updates reliability
-4. Timer accuracy across devices
-
-See `PENDING.md` for detailed debugging guide.
+See `PENDING.md` for detailed testing checklist.
 
 ---
 
@@ -94,6 +88,15 @@ See `PENDING.md` for detailed debugging guide.
 | `PENDING.md` | Known issues & testing checklist |
 | `supabase/schema.sql` | Database schema |
 | `supabase/SETUP_GUIDE.md` | DB setup instructions |
+
+---
+
+## 🆕 New API Routes (Jan 17-19)
+
+| Route | Purpose |
+|-------|---------|
+| `/api/admin/qr/fake` | CRUD for fake QR codes |
+| `/api/admin/qr/token` | Get/generate QR tokens for clues |
 
 ---
 
@@ -122,6 +125,13 @@ SUPABASE_SERVICE_ROLE_KEY=xxx
 - [ ] Generate and print QR codes
 - [ ] Disable RLS or configure policies
 - [ ] Brief volunteers on admin panel
+
+---
+
+## 📝 Contributors
+
+- Initial Development: @harsha
+- Bug Fixes & Features (Jan 17-19): @SaiGurulnukurthi
 
 ---
 
