@@ -243,10 +243,27 @@ export default function MonitorPage() {
         const team = teams.find((t) => t.id === teamId);
         if (!team) return;
 
-        const newScore = Math.max(0, team.score + adjustment);
-        const supabase = createClient();
-        await supabase.from("teams").update({ score: newScore }).eq("id", teamId);
-        fetchTeams();
+        try {
+            const response = await fetch("/api/admin/teams/score", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    team_id: teamId,
+                    adjustment: adjustment,
+                }),
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                console.error("Failed to adjust score:", data.message);
+                alert(data.message || "Failed to adjust score");
+            }
+            // Refresh teams data
+            fetchTeams();
+        } catch (error) {
+            console.error("Error adjusting score:", error);
+            alert("Failed to adjust score");
+        }
     };
 
     const endEvent = async () => {
@@ -482,7 +499,7 @@ export default function MonitorPage() {
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        onClick={() => adjustScore(team.id, -10)}
+                                                        onClick={() => adjustScore(team.id, -5)}
                                                         className="h-6 w-6 p-0 text-red-400 hover:text-red-300"
                                                     >
                                                         -
@@ -491,7 +508,7 @@ export default function MonitorPage() {
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        onClick={() => adjustScore(team.id, 10)}
+                                                        onClick={() => adjustScore(team.id, 5)}
                                                         className="h-6 w-6 p-0 text-green-400 hover:text-green-300"
                                                     >
                                                         +

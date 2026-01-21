@@ -28,10 +28,10 @@ export async function POST(request: NextRequest) {
 
         const supabase = createAdminClient();
 
-        // Get current team score and admin adjustment
+        // Get current team score
         const { data: team, error: fetchError } = await supabase
             .from("teams")
-            .select("score, admin_score_adjustment")
+            .select("score")
             .eq("id", team_id)
             .single();
 
@@ -47,14 +47,12 @@ export async function POST(request: NextRequest) {
 
         // Calculate new score (minimum 0)
         const newScore = Math.max(0, team.score + adjustment);
-        // Track cumulative admin adjustments
-        const newAdminAdjustment = (team.admin_score_adjustment || 0) + adjustment;
-        console.log("Updating score:", { oldScore: team.score, adjustment, newScore, newAdminAdjustment });
+        console.log("Updating score:", { oldScore: team.score, adjustment, newScore });
 
-        // Update team score and admin adjustment tracking
+        // Update team score
         const { data: updateData, error: updateError } = await supabase
             .from("teams")
-            .update({ score: newScore, admin_score_adjustment: newAdminAdjustment })
+            .update({ score: newScore })
             .eq("id", team_id)
             .select();
 
