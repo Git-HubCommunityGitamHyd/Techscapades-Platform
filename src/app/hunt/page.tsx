@@ -64,20 +64,40 @@ export default function HuntPage() {
                 .single();
 
             if (clueOrder) {
-                setCurrentClueOrder(clueOrder);
-
-                // Mark clue as started if not already
-                if (!clueOrder.clue_started_at) {
-                    await supabase
-                        .from("team_clue_order")
-                        .update({ clue_started_at: new Date().toISOString() })
-                        .eq("id", clueOrder.id);
-                    clueOrder.clue_started_at = new Date().toISOString();
-                }
-
-                // Check if hint was already viewed
-                if (clueOrder.hint_viewed) {
-                    setShowHint(true);
+                // Always call the API to get/set clue_started_at (uses admin client, bypasses RLS)
+                // This ensures we get the authoritative timestamp from the database
+                try {
+                    const response = await fetch("/api/hints/start-clue", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            team_id: teamData.id,
+                            clue_order_id: clueOrder.id,
+                        }),
+                    });
+                    const data = await response.json();
+                    if (data.success && data.clue_order) {
+                        // Use the clue_order from API (authoritative source)
+                        setCurrentClueOrder(data.clue_order);
+                        
+                        // Check if hint was already viewed
+                        if (data.clue_order.hint_viewed) {
+                            setShowHint(true);
+                        }
+                    } else {
+                        // Fallback to client-side data
+                        setCurrentClueOrder(clueOrder);
+                        if (clueOrder.hint_viewed) {
+                            setShowHint(true);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching clue order from API:", error);
+                    // Fallback to client-side data
+                    setCurrentClueOrder(clueOrder);
+                    if (clueOrder.hint_viewed) {
+                        setShowHint(true);
+                    }
                 }
 
                 const { data: clue } = await supabase
@@ -174,11 +194,44 @@ export default function HuntPage() {
             )
             .subscribe();
 
+        // Subscribe to team_clue_order updates (for hint sync between team members)
+        const clueOrderChannel = supabase
+            .channel("clue-order-updates")
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "team_clue_order",
+                    filter: `team_id=eq.${team.id}`,
+                },
+                (payload: { new: TeamClueOrder }) => {
+                    const updatedClueOrder = payload.new;
+                    // Only update if it's the current clue
+                    setCurrentClueOrder((prev) => {
+                        if (prev && prev.id === updatedClueOrder.id) {
+                            // If hint was viewed by another team member, update state
+                            if (updatedClueOrder.hint_viewed && !showHint) {
+                                setShowHint(true);
+                                // Fetch the hint text
+                                if (currentClue?.hint_text) {
+                                    setHintText(currentClue.hint_text);
+                                }
+                            }
+                            return updatedClueOrder;
+                        }
+                        return prev;
+                    });
+                }
+            )
+            .subscribe();
+
         return () => {
             supabase.removeChannel(teamChannel);
             supabase.removeChannel(eventChannel);
+            supabase.removeChannel(clueOrderChannel);
         };
-    }, [authLoading, team, fetchCurrentClue, fetchEvent, router]);
+    }, [authLoading, team, fetchCurrentClue, fetchEvent, router, showHint, currentClue?.hint_text]);
 
     // Timer effect - updates every second when hunt is active
     useEffect(() => {
