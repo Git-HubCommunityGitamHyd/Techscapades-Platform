@@ -23,6 +23,18 @@ export default function ProgressPage() {
     const fetchData = useCallback(async (teamData: Team) => {
         const supabase = createClient();
 
+        // Fetch fresh team data from database
+        const { data: freshTeam } = await supabase
+            .from("teams")
+            .select("*")
+            .eq("id", teamData.id)
+            .single();
+
+        if (freshTeam) {
+            setLocalTeam(freshTeam);
+            localStorage.setItem("team", JSON.stringify(freshTeam));
+        }
+
         const { data: eventData } = await supabase
             .from("events")
             .select("*")
@@ -64,9 +76,13 @@ export default function ProgressPage() {
             return;
         }
 
-        setLocalTeam(team);
-        fetchData(team);
-        setIsLoading(false);
+        // Fetch fresh data from database, then stop loading
+        const loadData = async () => {
+            await fetchData(team);
+            setIsLoading(false);
+        };
+        
+        loadData();
 
         const supabase = createClient();
         const channel = supabase
